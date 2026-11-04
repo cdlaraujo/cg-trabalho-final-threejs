@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Crypt Guardian 3D - Entrega 03</title>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; font-family: monospace; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #ui-container {
+      position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7);
+      color: #00ffcc; padding: 15px; border: 1px solid #00ffcc; border-radius: 8px;
+      pointer-events: none; z-index: 10;
+    }
+    .ui-item { margin-bottom: 8px; font-size: 14px; }
+    .ui-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #fff; text-decoration: underline; }
+    .status-on { color: #00ff00; }
+    .status-off { color: #ff3333; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <div id="ui-container">
+    <div class="ui-title">Painel de Demonstração (Entrega 03)</div>
+    <div class="ui-item">Câmera [C] : <span id="ui-cam">Terceira Pessoa</span></div>
+    <div class="ui-item">Luz 1 [1] (Ambiente) : <span id="ui-l1" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 2 [2] (Hemisfério) : <span id="ui-l2" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 3 [3] (Direcional/Lua): <span id="ui-l3" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 4 [4] (Tocha Jogador) : <span id="ui-l4" class="status-on">ON</span></div>
+    <br>
+    <div class="ui-item" style="color: #ccc;">Movimento: W, A, S, D</div>
+  </div>
+
+  <script>
+"use strict";
+
+// ===== Input.js =====
+const Input = {
+  keys: {},
+  init() {
+    window.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
+  },
+  isPressed(key) {
+    return !!this.keys[key];
+  }
+};
+
+// ===== CameraManager.js =====
+class CameraManager {
+  constructor(camera, player) {
+    this.camera = camera;
+    this.player = player;
+    this.mode = 1; // 1: 3ª Pessoa, 2: Top-Down, 3: 1ª Pessoa
+  }
+
+  toggleMode() {
+    this.mode = this.mode === 1 ? 2 : (this.mode === 2 ? 3 : 1);
+    return this.mode;
+  }
+
+  update() {
+    const pos = this.player.group.position;
+    
+    if (this.mode === 1) {
+      this.camera.position.set(pos.x, 18, pos.z + 14);
+      this.camera.lookAt(pos);
+    } else if (this.mode === 2) {
+      this.camera.position.set(pos.x, 35, pos.z + 1);
+      this.camera.lookAt(pos);
+    } else if (this.mode === 3) {
+      const rotY = this.player.group.rotation.y;
+      const dirX = Math.sin(rotY);
+      const dirZ = Math.cos(rotY);
+      this.camera.position.set(pos.x + dirX * 0.3, pos.y + 2.4, pos.z + dirZ * 0.3);
+      this.camera.lookAt(this.camera.position.x + dirX, this.camera.position.y, this.camera.position.z + dirZ);
+    }
+  }
+}
+
+// ===== LightManager.js =====
+class LightManager {
+  constructor(scene) {
+    this.ambientLight = new THREE.AmbientLight(0x2a3550, 0.55);
+    scene.add(this.ambientLight);
+
+    this.hemiLight = new THREE.HemisphereLight(0x4a6fa5, 0x1a202c, 0.7);
+    scene.add(this.hemiLight);
+
+    this.moonLight = new THREE.DirectionalLight(0xa0b8e0, 0.85);
+    this.moonLight.position.set(8, 16, 6);
+    this.moonLight.castShadow = true;
+    this.moonLight.shadow.mapSize.set(1024, 1024);
+    this.moonLight.shadow.camera.left = -20;
+    this.moonLight.shadow.camera.right = 20;
+    this.moonLight.shadow.camera.top = 20;
+    this.moonLight.shadow.camera.bottom = -20;
+    this.moonLight.shadow.camera.near = 0.5;
+    this.moonLight.shadow.camera.far = 50;
+    this.moonLight.shadow.bias = -0.0005;
+    scene.add(this.moonLight);
+    scene.add(this.moonLight.target);
+  }
+
+  toggle(lightType) {
+    if (lightType === 'ambient') this.ambientLight.visible = !this.ambientLight.visible;
+    if (lightType === 'hemi') this.hemiLight.visible = !this.hemiLight.visible;
+    if (lightType === 'moon') this.moonLight.visible = !this.moonLight.visible;
+  }
+}
+
+// ===== LevelMap.js =====
+class LevelMap {
+  constructor(scene) {
+    this.scene = scene;
+    this.blockSize = 4;
+    this.wallsBoxes = [];
+
+    this.grid = [
+      [1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 0, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 0, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1]
+    ];
+  }
+
+  cellToWorld(r, c) {
+    const rows = this.grid.length;
+    const cols = this.grid[0].length;
+    const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
+    const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
+    return new THREE.Vector3(c * this.blockSize + offsetX, 0, r * this.blockSize + offsetZ);
+  }
+
+  build() {
+    const rows = this.grid.length;
+    const cols = this.grid[0].length;
+    const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
+    const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
+
+    const floorGeo = new THREE.PlaneGeometry(cols * this.blockSize, rows * this.blockSize);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x161b22, roughness: 0.6, metalness: 0.1 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    this.scene.add(floor);
+
+    const wallGeo = new THREE.BoxGeometry(this.blockSize, 4, this.blockSize);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (this.grid[r][c] === 1) {
+          const wall = new THREE.Mesh(wallGeo, wallMat);
+          wall.position.set(c * this.blockSize + offsetX, 2, r * this.blockSize + offsetZ);
+          wall.castShadow = true;
+          wall.receiveShadow = true;
+          this.scene.add(wall);
+
+          const box = new THREE.Box3().setFromObject(wall);
+          this.wallsBoxes.push(box);
+        }
+      }
+    }
+  }
+}
+
+// ===== Player.js =====
+
+class Player {
+  constructor(scene, levelMap) {
+    this.level = levelMap;
+    this.group = new THREE.Group();
+    this.group.position.copy(this.level.cellToWorld(3, 3));
+    scene.add(this.group);
+    this.walkTimer = 0;
+    this.buildModel();
+  }
+
+  buildModel() {
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0x718096, roughness: 0.7 });
+    const clothesMat = new THREE.MeshStandardMaterial({ color: 0x2b6cb0, roughness: 0.8 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
+
+    this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat);
+    this.torso.position.y = 1.4;
+    this.torso.castShadow = true;
+    this.group.add(this.torso);
+
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), leatherMat);
+    belt.position.y = -0.45;
+    belt.castShadow = true;
+    this.torso.add(belt);
+
+    const buckle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.1, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0xd69e2e, metalness: 0.6, roughness: 0.4 })
+    );
+    buckle.position.set(0, -0.45, 0.29);
+    this.torso.add(buckle);
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat);
+    head.position.y = 1.0;
+    head.castShadow = true;
+    this.torso.add(head);
+
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
+    const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.02);
+    const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeLeft.position.set(-0.12, 0.1, 0.26);
+    head.add(eyeLeft);
+
+    const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeRight.position.set(0.12, 0.1, 0.26);
+    head.add(eyeRight);
+
+    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
+    legGeo.translate(0, -0.45, 0);
+
+    this.leftLeg = new THREE.Mesh(legGeo, clothesMat);
+    this.leftLeg.position.set(-0.25, -0.6, 0);
+    this.leftLeg.castShadow = true;
+    this.torso.add(this.leftLeg);
+
+    this.rightLeg = new THREE.Mesh(legGeo, clothesMat);
+    this.rightLeg.position.set(0.25, -0.6, 0);
+    this.rightLeg.castShadow = true;
+    this.torso.add(this.rightLeg);
+
+    const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+    armGeo.translate(0, -0.4, 0);
+
+    this.leftArm = new THREE.Mesh(armGeo, clothesMat);
+    this.leftArm.position.set(-0.55, 0.5, 0);
+    this.leftArm.castShadow = true;
+    this.torso.add(this.leftArm);
+
+    this.rightArm = new THREE.Mesh(armGeo, clothesMat);
+    this.rightArm.position.set(0.55, 0.5, 0);
+    this.rightArm.castShadow = true;
+    this.torso.add(this.rightArm);
+
+    const handGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+    this.leftHand = new THREE.Mesh(handGeo, skinMat);
+    this.leftHand.position.y = -0.85;
+    this.leftHand.castShadow = true;
+    this.leftArm.add(this.leftHand);
+
+    this.rightHand = new THREE.Mesh(handGeo, skinMat);
+    this.rightHand.position.y = -0.85;
+    this.rightHand.castShadow = true;
+    this.rightArm.add(this.rightHand);
+
+    const torch = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.06, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0x744210, roughness: 0.9 })
+    );
+    torch.position.set(0, -0.8, 0.3);
+    torch.rotation.x = Math.PI / 4;
+    this.rightArm.add(torch);
+
+    this.torchLight = new THREE.PointLight(0xed8936, 2.6, 16, 1.5);
+    this.torchLight.position.set(0, 0.45, 0);
+    this.torchLight.castShadow = true;
+    this.torchLight.shadow.mapSize.set(512, 512);
+    this.torchLight.shadow.bias = -0.0005;
+    torch.add(this.torchLight);
+  }
+
+  checkCollision(targetPos) {
+    const playerRadius = 0.55;
+    const playerBox = new THREE.Box3(
+      new THREE.Vector3(targetPos.x - playerRadius, 0.2, targetPos.z - playerRadius),
+      new THREE.Vector3(targetPos.x + playerRadius, 2.0, targetPos.z + playerRadius)
+    );
+    for (let box of this.level.wallsBoxes) {
+      if (box.intersectsBox(playerBox)) return true;
+    }
+    return false;
+  }
+
+  update(deltaTime) {
+    const moveSpeed = 5.0;
+    let moveX = 0; let moveZ = 0;
+
+    if (Input.isPressed('w')) moveZ -= 1;
+    if (Input.isPressed('s')) moveZ += 1;
+    if (Input.isPressed('a')) moveX -= 1;
+    if (Input.isPressed('d')) moveX += 1;
+
+    if (moveX !== 0 || moveZ !== 0) {
+      const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize().multiplyScalar(moveSpeed * deltaTime);
+
+      const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
+      if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
+
+      const targetZ = this.group.position.clone().add(new THREE.Vector3(0, 0, moveVec.z));
+      if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
+
+      this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+      this.walkTimer += deltaTime * 10;
+      
+      this.leftLeg.rotation.x = Math.sin(this.walkTimer) * 0.7;
+      this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * 0.7;
+      this.leftArm.rotation.x = -Math.sin(this.walkTimer) * 0.6;
+      this.rightArm.rotation.x = Math.sin(this.walkTimer) * 0.3;
+    } else {
+      this.leftLeg.rotation.x = 0;
+      this.rightLeg.rotation.x = 0;
+      this.leftArm.rotation.x = 0;
+      this.rightArm.rotation.x = 0;
+    }
+  }
+}
+
+// ===== Guardian.js =====
+class Guardian {
+  constructor(scene, initialPosition = new THREE.Vector3(0, 0, -4)) {
+    this.scene = scene;
+    this.group = new THREE.Group();
+    this.group.position.copy(initialPosition);
+    this.scene.add(this.group);
+    this.animationTimer = 0;
+    this.buildModel();
+  }
+
+  buildModel() {
+    const golemMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.9, metalness: 0.2 });
+
+    this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), golemMat);
+    this.torso.position.y = 2.0;
+    this.torso.castShadow = true;
+    this.torso.receiveShadow = true;
+    this.group.add(this.torso);
+
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xe53e3e });
+    const eyeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
+    eyeLeft.position.set(-0.35, 0.4, 0.52);
+    this.torso.add(eyeLeft);
+
+    const eyeRight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
+    eyeRight.position.set(0.35, 0.4, 0.52);
+    this.torso.add(eyeRight);
+
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.25), new THREE.MeshBasicMaterial({ color: 0xe53e3e }));
+    core.position.set(0, 0.05, 0.55);
+    this.torso.add(core);
+    this.core = core;
+
+    const armGeo = new THREE.BoxGeometry(0.5, 1.4, 0.5);
+    armGeo.translate(0, -0.7, 0);
+
+    this.leftArm = new THREE.Mesh(armGeo, golemMat);
+    this.leftArm.position.set(-1.1, 0.6, 0);
+    this.leftArm.castShadow = true;
+    this.torso.add(this.leftArm);
+
+    this.rightArm = new THREE.Mesh(armGeo, golemMat);
+    this.rightArm.position.set(1.1, 0.6, 0);
+    this.rightArm.castShadow = true;
+    this.torso.add(this.rightArm);
+
+    const legGeo = new THREE.BoxGeometry(0.6, 1.0, 0.7);
+    legGeo.translate(0, -0.5, 0);
+
+    this.leftLeg = new THREE.Mesh(legGeo, golemMat);
+    this.leftLeg.position.set(-0.5, -0.9, 0);
+    this.leftLeg.castShadow = true;
+    this.torso.add(this.leftLeg);
+
+    this.rightLeg = new THREE.Mesh(legGeo, golemMat);
+    this.rightLeg.position.set(0.5, -0.9, 0);
+    this.rightLeg.castShadow = true;
+    this.torso.add(this.rightLeg);
+  }
+
+  update(deltaTime) {
+    this.animationTimer += deltaTime * 2.5;
+    this.torso.position.y = 2.0 + Math.sin(this.animationTimer * 1.2) * 0.15;
+    this.leftArm.rotation.x = Math.sin(this.animationTimer) * 0.4;
+    this.rightArm.rotation.x = -Math.sin(this.animationTimer) * 0.4;
+    if (this.core) this.core.rotation.y += deltaTime * 1.5;
+  }
+}
+
+// ===== Main.js =====
+
+// Setup Base
+Input.init();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050508);
+scene.fog = new THREE.FogExp2(0x050508, 0.03);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Instanciação dos Sistemas e Entidades
+const lightManager = new LightManager(scene);
+const level = new LevelMap(scene);
+level.build();
+
+const player = new Player(scene, level);
+const guardian = new Guardian(scene, new THREE.Vector3(0, 0, -4));
+const cameraManager = new CameraManager(camera, player);
+
+// Eventos de Interface e Toggles da Entrega 03
+function updateUI() {
+  const modes = { 1: "Terceira Pessoa", 2: "Top-Down (Tática)", 3: "Primeira Pessoa" };
+  document.getElementById('ui-cam').innerText = modes[cameraManager.mode];
+  
+  const updateLuz = (id, lightObj) => {
+    const el = document.getElementById(id);
+    el.innerText = lightObj.visible ? "ON" : "OFF";
+    el.className = lightObj.visible ? "status-on" : "status-off";
+  };
+  updateLuz('ui-l1', lightManager.ambientLight);
+  updateLuz('ui-l2', lightManager.hemiLight);
+  updateLuz('ui-l3', lightManager.moonLight);
+  updateLuz('ui-l4', player.torchLight);
+}
+
+window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  if (key === 'c') cameraManager.toggleMode();
+  if (key === '1') lightManager.toggle('ambient');
+  if (key === '2') lightManager.toggle('hemi');
+  if (key === '3') lightManager.toggle('moon');
+  if (key === '4') player.torchLight.visible = !player.torchLight.visible;
+  updateUI();
+});
+
+// Game Loop Principal
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const deltaTime = Math.min(clock.getDelta(), 0.1);
+
+  player.update(deltaTime);
+  guardian.update(deltaTime);
+  cameraManager.update();
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+</script>
+</body>
+</html>
