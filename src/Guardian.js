@@ -9,9 +9,7 @@ export class Guardian {
   }
 
   buildModel() {
-    const golemMat = new THREE.MeshStandardMaterial({
-      color: 0x4a5568, roughness: 0.9, metalness: 0.2
-    });
+    const golemMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.9, metalness: 0.2 });
 
     this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), golemMat);
     this.torso.position.y = 2.0;
@@ -28,10 +26,7 @@ export class Guardian {
     eyeRight.position.set(0.35, 0.4, 0.52);
     this.torso.add(eyeRight);
 
-    const core = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.25),
-      new THREE.MeshBasicMaterial({ color: 0xe53e3e })
-    );
+    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.25), new THREE.MeshBasicMaterial({ color: 0xe53e3e }));
     core.position.set(0, 0.05, 0.55);
     this.torso.add(core);
     this.core = core;

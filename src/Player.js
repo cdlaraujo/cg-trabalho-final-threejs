@@ -1,3 +1,5 @@
+import { Input } from './Input.js';
+
 export class Player {
   constructor(scene, levelMap) {
     this.level = levelMap;
@@ -6,7 +8,6 @@ export class Player {
     scene.add(this.group);
     this.walkTimer = 0;
     this.buildModel();
-    this.setupInputs();
   }
 
   buildModel() {
@@ -99,18 +100,6 @@ export class Player {
     torch.add(this.torchLight);
   }
 
-  setupInputs() {
-    this.keys = { w: false, a: false, s: false, d: false };
-    window.addEventListener('keydown', (e) => {
-      const k = e.key.toLowerCase();
-      if (this.keys.hasOwnProperty(k)) this.keys[k] = true;
-    });
-    window.addEventListener('keyup', (e) => {
-      const k = e.key.toLowerCase();
-      if (this.keys.hasOwnProperty(k)) this.keys[k] = false;
-    });
-  }
-
   checkCollision(targetPos) {
     const playerRadius = 0.55;
     const playerBox = new THREE.Box3(
@@ -125,18 +114,15 @@ export class Player {
 
   update(deltaTime) {
     const moveSpeed = 5.0;
-    let moveX = 0;
-    let moveZ = 0;
+    let moveX = 0; let moveZ = 0;
 
-    if (this.keys.w) moveZ -= 1;
-    if (this.keys.s) moveZ += 1;
-    if (this.keys.a) moveX -= 1;
-    if (this.keys.d) moveX += 1;
+    if (Input.isPressed('w')) moveZ -= 1;
+    if (Input.isPressed('s')) moveZ += 1;
+    if (Input.isPressed('a')) moveX -= 1;
+    if (Input.isPressed('d')) moveX += 1;
 
     if (moveX !== 0 || moveZ !== 0) {
-      const moveVec = new THREE.Vector3(moveX, 0, moveZ)
-        .normalize()
-        .multiplyScalar(moveSpeed * deltaTime);
+      const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize().multiplyScalar(moveSpeed * deltaTime);
 
       const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
       if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
@@ -145,8 +131,8 @@ export class Player {
       if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
 
       this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
-
       this.walkTimer += deltaTime * 10;
+      
       this.leftLeg.rotation.x = Math.sin(this.walkTimer) * 0.7;
       this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * 0.7;
       this.leftArm.rotation.x = -Math.sin(this.walkTimer) * 0.6;
