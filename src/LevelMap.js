@@ -2,21 +2,21 @@ export class LevelMap {
   constructor(scene) {
     this.scene = scene;
     this.blockSize = 4;
-    this.wallsBoxes = []; // AABBs para colisão do jogador
+    this.wallsBoxes = [];
 
-    // 1 = parede, 0 = chão livre
+    // O jogador nasce na linha 3, coluna 3 (centro exato)
+    // Adicionei pilares (1) internamente para criar sombras dinâmicas
     this.grid = [
       [1, 1, 1, 1, 1, 1, 1],
       [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 0, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1], // <--- Jogador (3,3)
+      [1, 0, 1, 0, 1, 0, 1],
       [1, 0, 0, 0, 0, 0, 1],
       [1, 1, 1, 1, 1, 1, 1]
     ];
   }
 
-  // Converte (linha, coluna) em posição de MUNDO (centro da célula, y=0)
   cellToWorld(r, c) {
     const rows = this.grid.length;
     const cols = this.grid[0].length;
@@ -29,40 +29,26 @@ export class LevelMap {
     );
   }
 
-  // Inverso — útil para debug ("em que célula estou?")
-  worldToCell(x, z) {
-    const rows = this.grid.length;
-    const cols = this.grid[0].length;
-    const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
-    const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
-    return {
-      r: Math.round((z - offsetZ) / this.blockSize),
-      c: Math.round((x - offsetX) / this.blockSize)
-    };
-  }
-
-  isWalkable(r, c) {
-    if (r < 0 || c < 0 || r >= this.grid.length || c >= this.grid[0].length) return false;
-    return this.grid[r][c] === 0;
-  }
-
   build() {
     const rows = this.grid.length;
     const cols = this.grid[0].length;
-
     const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
     const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
 
-    // Chão
+    // CHÃO: Alterado para parecer "pedra úmida" e pegar o brilho da tocha
     const floorGeo = new THREE.PlaneGeometry(cols * this.blockSize, rows * this.blockSize);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a202c, roughness: 1.0 });
+    const floorMat = new THREE.MeshStandardMaterial({ 
+      color: 0x161b22, 
+      roughness: 0.6,  // Menos fosco para criar o brilho especular (luz refletida)
+      metalness: 0.1   // Leve reflexo
+    });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0;
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // Paredes (geometria + material compartilhados)
+    // PAREDES: Mantidas rochosas e opacas
     const wallGeo = new THREE.BoxGeometry(this.blockSize, 4, this.blockSize);
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
 

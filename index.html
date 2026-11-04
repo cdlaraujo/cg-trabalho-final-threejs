@@ -2,15 +2,43 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Crypt Guardian 3D</title>
+  <title>Crypt Guardian 3D - Entrega 03</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; }
+    body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; font-family: monospace; }
     canvas { display: block; width: 100vw; height: 100vh; }
+    
+    #ui-container {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #00ffcc;
+      padding: 15px;
+      border: 1px solid #00ffcc;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .ui-item { margin-bottom: 8px; font-size: 14px; }
+    .ui-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #fff; text-decoration: underline; }
+    .status-on { color: #00ff00; }
+    .status-off { color: #ff3333; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- type="module" é obrigatório para usar imports ES -->
-  <script type="module" src="src/main.js"></script>
+  <div id="ui-container">
+    <div class="ui-title">Painel de Demonstração (Entrega 03)</div>
+    <div class="ui-item">Câmera [C] : <span id="ui-cam">Terceira Pessoa</span></div>
+    <div class="ui-item">Luz 1 [1] (Ambiente) : <span id="ui-l1" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 2 [2] (Hemisfério) : <span id="ui-l2" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 3 [3] (Direcional/Lua): <span id="ui-l3" class="status-on">ON</span></div>
+    <div class="ui-item">Luz 4 [4] (Tocha Jogador) : <span id="ui-l4" class="status-on">ON</span></div>
+    <br>
+    <div class="ui-item" style="color: #ccc;">Movimento: W, A, S, D</div>
+  </div>
+
+  <!-- Importa o Main.js como módulo para permitir import/export ES6 -->
+  <script type="module" src="./src/Main.js"></script>
 </body>
 </html>
