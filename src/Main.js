@@ -1,3 +1,4 @@
+import { Config } from './Config.js';
 import { Input } from './Input.js';
 import { LightManager } from './LightManager.js';
 import { CameraManager } from './CameraManager.js';
@@ -5,18 +6,24 @@ import { LevelMap } from './LevelMap.js';
 import { Player } from './Player.js';
 import { Guardian } from './Guardian.js';
 
-// Setup Base
 Input.init();
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050508);
-scene.fog = new THREE.FogExp2(0x050508, 0.03);
+scene.background = new THREE.Color(Config.COLORS.background);
+scene.fog = new THREE.FogExp2(Config.COLORS.fog, 0.03);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(
+  Config.CAMERA.fov, 
+  window.innerWidth / window.innerHeight, 
+  Config.CAMERA.near, 
+  Config.CAMERA.far
+);
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -25,7 +32,6 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Instanciação dos Sistemas e Entidades
 const lightManager = new LightManager(scene);
 const level = new LevelMap(scene);
 level.build();
@@ -34,7 +40,6 @@ const player = new Player(scene, level);
 const guardian = new Guardian(scene, new THREE.Vector3(0, 0, -4));
 const cameraManager = new CameraManager(camera, player);
 
-// Eventos de Interface e Toggles da Entrega 03
 function updateUI() {
   const modes = { 1: "Terceira Pessoa", 2: "Top-Down (Tática)", 3: "Primeira Pessoa" };
   document.getElementById('ui-cam').innerText = modes[cameraManager.mode];
@@ -60,7 +65,6 @@ window.addEventListener('keydown', (e) => {
   updateUI();
 });
 
-// Game Loop Principal
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
@@ -72,5 +76,4 @@ function animate() {
 
   renderer.render(scene, camera);
 }
-
 animate();

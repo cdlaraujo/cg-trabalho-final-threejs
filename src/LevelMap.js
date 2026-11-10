@@ -1,18 +1,12 @@
+import { Config } from './Config.js';
+
 export class LevelMap {
   constructor(scene) {
     this.scene = scene;
-    this.blockSize = 4;
+    this.blockSize = Config.LEVEL.blockSize;
+    this.grid = Config.LEVEL.grid;
     this.wallsBoxes = [];
-
-    this.grid = [
-      [1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1]
-    ];
+    this.textureLoader = new THREE.TextureLoader();
   }
 
   cellToWorld(r, c) {
@@ -29,16 +23,31 @@ export class LevelMap {
     const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
     const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
 
+    const floorTexture = this.textureLoader.load(Config.TEXTURES.floor);
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(cols, rows); // Dinâmico, baseado no grid
+
     const floorGeo = new THREE.PlaneGeometry(cols * this.blockSize, rows * this.blockSize);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x161b22, roughness: 0.6, metalness: 0.1 });
+    const floorMat = new THREE.MeshStandardMaterial({ 
+      map: floorTexture, roughness: 0.7, metalness: 0.1 
+    });
+    
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0;
     floor.receiveShadow = true;
     this.scene.add(floor);
 
+    const wallTexture = this.textureLoader.load(Config.TEXTURES.wall);
+    wallTexture.wrapS = THREE.RepeatWrapping;
+    wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(2, 2);
+
     const wallGeo = new THREE.BoxGeometry(this.blockSize, 4, this.blockSize);
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
+    const wallMat = new THREE.MeshStandardMaterial({ 
+      map: wallTexture, roughness: 0.85, metalness: 0.15 
+    });
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -48,9 +57,7 @@ export class LevelMap {
           wall.castShadow = true;
           wall.receiveShadow = true;
           this.scene.add(wall);
-
-          const box = new THREE.Box3().setFromObject(wall);
-          this.wallsBoxes.push(box);
+          this.wallsBoxes.push(new THREE.Box3().setFromObject(wall));
         }
       }
     }

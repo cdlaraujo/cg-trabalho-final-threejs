@@ -1,12 +1,14 @@
+import { Config } from './Config.js';
+
 export class LightManager {
   constructor(scene) {
-    this.ambientLight = new THREE.AmbientLight(0x2a3550, 0.55);
+    this.ambientLight = new THREE.AmbientLight(Config.COLORS.ambientLight, 0.55);
     scene.add(this.ambientLight);
 
-    this.hemiLight = new THREE.HemisphereLight(0x4a6fa5, 0x1a202c, 0.7);
+    this.hemiLight = new THREE.HemisphereLight(Config.COLORS.hemiSky, Config.COLORS.hemiGround, 0.7);
     scene.add(this.hemiLight);
 
-    this.moonLight = new THREE.DirectionalLight(0xa0b8e0, 0.85);
+    this.moonLight = new THREE.DirectionalLight(Config.COLORS.directionalLight, 0.85);
     this.moonLight.position.set(8, 16, 6);
     this.moonLight.castShadow = true;
     this.moonLight.shadow.mapSize.set(1024, 1024);
