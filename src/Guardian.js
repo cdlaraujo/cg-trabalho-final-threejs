@@ -5,11 +5,22 @@ export class Guardian {
     this.group.position.copy(initialPosition);
     this.scene.add(this.group);
     this.animationTimer = 0;
+    this.textureLoader = new THREE.TextureLoader();
     this.buildModel();
   }
 
   buildModel() {
-    const golemMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.9, metalness: 0.2 });
+    // 3. Textura Rochosa do Golem
+    const golemTexture = this.textureLoader.load('./assets/textures/golem_rock.png');
+    golemTexture.wrapS = THREE.RepeatWrapping;
+    golemTexture.wrapT = THREE.RepeatWrapping;
+    golemTexture.repeat.set(1, 1);
+
+    const golemMat = new THREE.MeshStandardMaterial({ 
+      map: golemTexture,
+      roughness: 0.9, 
+      metalness: 0.2 
+    });
 
     this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), golemMat);
     this.torso.position.y = 2.0;

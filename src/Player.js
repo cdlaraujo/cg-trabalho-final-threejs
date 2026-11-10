@@ -1,5 +1,3 @@
-import { Input } from './Input.js';
-
 export class Player {
   constructor(scene, levelMap) {
     this.level = levelMap;
@@ -8,6 +6,7 @@ export class Player {
     scene.add(this.group);
     this.walkTimer = 0;
     this.buildModel();
+    this.setupInputs();
   }
 
   buildModel() {
@@ -84,9 +83,19 @@ export class Player {
     this.rightHand.castShadow = true;
     this.rightArm.add(this.rightHand);
 
+    // 4. Textura de Madeira da Tocha
+    const textureLoader = new THREE.TextureLoader();
+    const woodTexture = textureLoader.load('./assets/textures/wood.png');
+    woodTexture.wrapS = THREE.RepeatWrapping;
+    woodTexture.wrapT = THREE.RepeatWrapping;
+    woodTexture.repeat.set(1, 2);
+
     const torch = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.06, 0.7),
-      new THREE.MeshStandardMaterial({ color: 0x744210, roughness: 0.9 })
+      new THREE.MeshStandardMaterial({ 
+        map: woodTexture,
+        roughness: 0.85 
+      })
     );
     torch.position.set(0, -0.8, 0.3);
     torch.rotation.x = Math.PI / 4;
@@ -98,6 +107,18 @@ export class Player {
     this.torchLight.shadow.mapSize.set(512, 512);
     this.torchLight.shadow.bias = -0.0005;
     torch.add(this.torchLight);
+  }
+
+  setupInputs() {
+    this.keys = { w: false, a: false, s: false, d: false };
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (this.keys.hasOwnProperty(k)) this.keys[k] = true;
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (this.keys.hasOwnProperty(k)) this.keys[k] = false;
+    });
   }
 
   checkCollision(targetPos) {
@@ -114,15 +135,18 @@ export class Player {
 
   update(deltaTime) {
     const moveSpeed = 5.0;
-    let moveX = 0; let moveZ = 0;
+    let moveX = 0;
+    let moveZ = 0;
 
-    if (Input.isPressed('w')) moveZ -= 1;
-    if (Input.isPressed('s')) moveZ += 1;
-    if (Input.isPressed('a')) moveX -= 1;
-    if (Input.isPressed('d')) moveX += 1;
+    if (this.keys.w) moveZ -= 1;
+    if (this.keys.s) moveZ += 1;
+    if (this.keys.a) moveX -= 1;
+    if (this.keys.d) moveX += 1;
 
     if (moveX !== 0 || moveZ !== 0) {
-      const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize().multiplyScalar(moveSpeed * deltaTime);
+      const moveVec = new THREE.Vector3(moveX, 0, moveZ)
+        .normalize()
+        .multiplyScalar(moveSpeed * deltaTime);
 
       const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
       if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
@@ -131,8 +155,8 @@ export class Player {
       if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
 
       this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+
       this.walkTimer += deltaTime * 10;
-      
       this.leftLeg.rotation.x = Math.sin(this.walkTimer) * 0.7;
       this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * 0.7;
       this.leftArm.rotation.x = -Math.sin(this.walkTimer) * 0.6;
