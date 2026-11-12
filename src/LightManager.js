@@ -2,14 +2,19 @@ import { Config } from './Config.js';
 
 export class LightManager {
   constructor(scene) {
-    this.ambientLight = new THREE.AmbientLight(Config.COLORS.ambientLight, 0.55);
+    const { ambient, hemi, moon } = Config.LIGHTS;
+
+    // Luz ambiente para preenchimento de penumbra
+    this.ambientLight = new THREE.AmbientLight(ambient.color, ambient.intensity);
     scene.add(this.ambientLight);
 
-    this.hemiLight = new THREE.HemisphereLight(Config.COLORS.hemiSky, Config.COLORS.hemiGround, 0.7);
+    // Hemisfério (gradiente teto/chão)
+    this.hemiLight = new THREE.HemisphereLight(hemi.sky, hemi.ground, hemi.intensity);
     scene.add(this.hemiLight);
 
-    this.moonLight = new THREE.DirectionalLight(Config.COLORS.directionalLight, 0.85);
-    this.moonLight.position.set(8, 16, 6);
+    // Luz noturna direcional com projeção de sombras
+    this.moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
+    this.moonLight.position.set(...moon.pos);
     this.moonLight.castShadow = true;
     this.moonLight.shadow.mapSize.set(1024, 1024);
     this.moonLight.shadow.camera.left = -20;

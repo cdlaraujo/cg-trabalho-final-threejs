@@ -1,3 +1,15 @@
+import { Config } from './Config.js';
+import { Input } from './Input.js';
+
+const addMesh = (geo, mat, parent, [x, y, z], [rx, ry, rz] = [0, 0, 0]) => {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  m.rotation.set(rx, ry, rz);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+};
+
 export class Player {
   constructor(scene, levelMap) {
     this.level = levelMap;
@@ -6,166 +18,89 @@ export class Player {
     scene.add(this.group);
     this.walkTimer = 0;
     this.buildModel();
-    this.setupInputs();
   }
 
   buildModel() {
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0x718096, roughness: 0.7 });
-    const clothesMat = new THREE.MeshStandardMaterial({ color: 0x2b6cb0, roughness: 0.8 });
-    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.9 });
+    const { playerSkin: cS, playerClothes: cC, playerLeather: cL, buckle: cB } = Config.COLORS;
+    const mat = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+    const mEye = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
 
-    this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat);
-    this.torso.position.y = 1.4;
-    this.torso.castShadow = true;
-    this.group.add(this.torso);
+    // Tronco e Acessórios
+    this.torso = addMesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), mat(cC, 0.8), this.group, [0, 1.4, 0]);
+    addMesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), mat(cL, 0.9), this.torso, [0, -0.45, 0]);
+    addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.05), mat(cB, 0.4), this.torso, [0, -0.45, 0.29]);
 
-    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), leatherMat);
-    belt.position.y = -0.45;
-    belt.castShadow = true;
-    this.torso.add(belt);
+    // Cabeça
+    const head = addMesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), mat(cS, 0.7), this.torso, [0, 1.0, 0]);
+    addMesh(new THREE.BoxGeometry(0.1, 0.08, 0.02), mEye, head, [-0.12, 0.1, 0.26]);
+    addMesh(new THREE.BoxGeometry(0.1, 0.08, 0.02), mEye, head, [0.12, 0.1, 0.26]);
 
-    const buckle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, 0.1, 0.05),
-      new THREE.MeshStandardMaterial({ color: 0xd69e2e, metalness: 0.6, roughness: 0.4 })
-    );
-    buckle.position.set(0, -0.45, 0.29);
-    this.torso.add(buckle);
-
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat);
-    head.position.y = 1.0;
-    head.castShadow = true;
-    this.torso.add(head);
-
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
-    const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.02);
-    const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeLeft.position.set(-0.12, 0.1, 0.26);
-    head.add(eyeLeft);
-
-    const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeRight.position.set(0.12, 0.1, 0.26);
-    head.add(eyeRight);
-
-    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
-    legGeo.translate(0, -0.45, 0);
-
-    this.leftLeg = new THREE.Mesh(legGeo, clothesMat);
-    this.leftLeg.position.set(-0.25, -0.6, 0);
-    this.leftLeg.castShadow = true;
-    this.torso.add(this.leftLeg);
-
-    this.rightLeg = new THREE.Mesh(legGeo, clothesMat);
-    this.rightLeg.position.set(0.25, -0.6, 0);
-    this.rightLeg.castShadow = true;
-    this.torso.add(this.rightLeg);
-
-    const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-    armGeo.translate(0, -0.4, 0);
-
-    this.leftArm = new THREE.Mesh(armGeo, clothesMat);
-    this.leftArm.position.set(-0.55, 0.5, 0);
-    this.leftArm.castShadow = true;
-    this.torso.add(this.leftArm);
-
-    this.rightArm = new THREE.Mesh(armGeo, clothesMat);
-    this.rightArm.position.set(0.55, 0.5, 0);
-    this.rightArm.castShadow = true;
-    this.torso.add(this.rightArm);
-
+    // Membros Articulados
+    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3).translate(0, -0.45, 0);
+    const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25).translate(0, -0.4, 0);
     const handGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
-    this.leftHand = new THREE.Mesh(handGeo, skinMat);
-    this.leftHand.position.y = -0.85;
-    this.leftHand.castShadow = true;
-    this.leftArm.add(this.leftHand);
 
-    this.rightHand = new THREE.Mesh(handGeo, skinMat);
-    this.rightHand.position.y = -0.85;
-    this.rightHand.castShadow = true;
-    this.rightArm.add(this.rightHand);
+    this.leftLeg = addMesh(legGeo, mat(cC, 0.8), this.torso, [-0.25, -0.6, 0]);
+    this.rightLeg = addMesh(legGeo, mat(cC, 0.8), this.torso, [0.25, -0.6, 0]);
+    this.leftArm = addMesh(armGeo, mat(cC, 0.8), this.torso, [-0.55, 0.5, 0]);
+    this.rightArm = addMesh(armGeo, mat(cC, 0.8), this.torso, [0.55, 0.5, 0]);
+    addMesh(handGeo, mat(cS, 0.7), this.leftArm, [0, -0.85, 0]);
+    addMesh(handGeo, mat(cS, 0.7), this.rightArm, [0, -0.85, 0]);
 
-    // 4. Textura de Madeira da Tocha
-    const textureLoader = new THREE.TextureLoader();
-    const woodTexture = textureLoader.load('./assets/textures/wood.png');
-    woodTexture.wrapS = THREE.RepeatWrapping;
-    woodTexture.wrapT = THREE.RepeatWrapping;
-    woodTexture.repeat.set(1, 2);
+    // Tocha Texturizada e Fonte de Luz
+    const tex = new THREE.TextureLoader().load(Config.TEXTURES.wood);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 2);
 
-    const torch = new THREE.Mesh(
+    const torch = addMesh(
       new THREE.CylinderGeometry(0.05, 0.06, 0.7),
-      new THREE.MeshStandardMaterial({ 
-        map: woodTexture,
-        roughness: 0.85 
-      })
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }),
+      this.rightArm,
+      [0, -0.8, 0.3],
+      [Math.PI / 4, 0, 0]
     );
-    torch.position.set(0, -0.8, 0.3);
-    torch.rotation.x = Math.PI / 4;
-    this.rightArm.add(torch);
 
-    this.torchLight = new THREE.PointLight(0xed8936, 2.6, 16, 1.5);
+    const t = Config.LIGHTS.torch;
+    this.torchLight = new THREE.PointLight(t.color, t.intensity, t.distance, t.decay);
     this.torchLight.position.set(0, 0.45, 0);
     this.torchLight.castShadow = true;
-    this.torchLight.shadow.mapSize.set(512, 512);
     this.torchLight.shadow.bias = -0.0005;
     torch.add(this.torchLight);
   }
 
-  setupInputs() {
-    this.keys = { w: false, a: false, s: false, d: false };
-    window.addEventListener('keydown', (e) => {
-      const k = e.key.toLowerCase();
-      if (this.keys.hasOwnProperty(k)) this.keys[k] = true;
-    });
-    window.addEventListener('keyup', (e) => {
-      const k = e.key.toLowerCase();
-      if (this.keys.hasOwnProperty(k)) this.keys[k] = false;
-    });
-  }
-
-  checkCollision(targetPos) {
-    const playerRadius = 0.55;
-    const playerBox = new THREE.Box3(
-      new THREE.Vector3(targetPos.x - playerRadius, 0.2, targetPos.z - playerRadius),
-      new THREE.Vector3(targetPos.x + playerRadius, 2.0, targetPos.z + playerRadius)
-    );
-    for (let box of this.level.wallsBoxes) {
-      if (box.intersectsBox(playerBox)) return true;
-    }
-    return false;
+  checkCol(pos) {
+    const box = new THREE.Box3().setFromCenterAndSize(pos.clone().setY(1), new THREE.Vector3(1.1, 1.8, 1.1));
+    return this.level.wallsBoxes.some(w => w.intersectsBox(box));
   }
 
   update(deltaTime) {
-    const moveSpeed = 5.0;
-    let moveX = 0;
-    let moveZ = 0;
+    const mx = Input.isPressed('d') - Input.isPressed('a');
+    const mz = Input.isPressed('s') - Input.isPressed('w');
 
-    if (this.keys.w) moveZ -= 1;
-    if (this.keys.s) moveZ += 1;
-    if (this.keys.a) moveX -= 1;
-    if (this.keys.d) moveX += 1;
+    if (mx !== 0 || mz !== 0) {
+      const vec = new THREE.Vector3(mx, 0, mz).normalize().multiplyScalar(Config.PLAYER.speed * deltaTime);
+      const pos = this.group.position;
 
-    if (moveX !== 0 || moveZ !== 0) {
-      const moveVec = new THREE.Vector3(moveX, 0, moveZ)
-        .normalize()
-        .multiplyScalar(moveSpeed * deltaTime);
+      if (!this.checkCol(pos.clone().add(new THREE.Vector3(vec.x, 0, 0)))) pos.x += vec.x;
+      if (!this.checkCol(pos.clone().add(new THREE.Vector3(0, 0, vec.z)))) pos.z += vec.z;
 
-      const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
-      if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
-
-      const targetZ = this.group.position.clone().add(new THREE.Vector3(0, 0, moveVec.z));
-      if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
-
-      this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
-
+      this.group.rotation.y = Math.atan2(vec.x, vec.z);
       this.walkTimer += deltaTime * 10;
-      this.leftLeg.rotation.x = Math.sin(this.walkTimer) * 0.7;
-      this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * 0.7;
-      this.leftArm.rotation.x = -Math.sin(this.walkTimer) * 0.6;
-      this.rightArm.rotation.x = Math.sin(this.walkTimer) * 0.3;
     } else {
-      this.leftLeg.rotation.x = 0;
-      this.rightLeg.rotation.x = 0;
-      this.leftArm.rotation.x = 0;
-      this.rightArm.rotation.x = 0;
+      this.walkTimer = 0;
+    }
+
+    const w = this.walkTimer;
+    this.leftLeg.rotation.x = Math.sin(w) * 0.7;
+    this.rightLeg.rotation.x = -Math.sin(w) * 0.7;
+    this.leftArm.rotation.x = -Math.sin(w) * 0.6;
+    this.rightArm.rotation.x = Math.sin(w) * 0.3;
+
+    // Oscilação física da tocha (flicker)
+    if (Config.LIGHTS.torch.flicker && this.torchLight.visible) {
+      this.torchLight.intensity = Config.LIGHTS.torch.intensity +
+        Math.sin(Date.now() * 0.015) * 0.35 +
+        Math.cos(Date.now() * 0.03) * 0.15;
     }
   }
 }
