@@ -6,15 +6,16 @@ import { LevelMap } from './LevelMap.js';
 import { Player } from './Player.js';
 import { Guardian } from './Guardian.js';
 
+// Setup de Entrada e Cena
 Input.init();
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(Config.COLORS.background);
 scene.fog = new THREE.FogExp2(Config.COLORS.fog, 0.03);
 
 const camera = new THREE.PerspectiveCamera(
-  Config.CAMERA.fov, 
-  window.innerWidth / window.innerHeight, 
-  Config.CAMERA.near, 
+  Config.CAMERA.fov,
+  window.innerWidth / window.innerHeight,
+  Config.CAMERA.near,
   Config.CAMERA.far
 );
 
@@ -24,6 +25,11 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+
+// Mapeamento de tom cinematográfico para controle de brilho e contraste
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = Config.LIGHTS.exposure;
+
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -32,6 +38,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Instanciação dos Sistemas
 const lightManager = new LightManager(scene);
 const level = new LevelMap(scene);
 level.build();
@@ -40,10 +47,11 @@ const player = new Player(scene, level);
 const guardian = new Guardian(scene, new THREE.Vector3(0, 0, -4));
 const cameraManager = new CameraManager(camera, player);
 
+// HUD / Toggles de Demonstração
 function updateUI() {
   const modes = { 1: "Terceira Pessoa", 2: "Top-Down (Tática)", 3: "Primeira Pessoa" };
   document.getElementById('ui-cam').innerText = modes[cameraManager.mode];
-  
+
   const updateLuz = (id, lightObj) => {
     const el = document.getElementById(id);
     el.innerText = lightObj.visible ? "ON" : "OFF";
@@ -65,6 +73,7 @@ window.addEventListener('keydown', (e) => {
   updateUI();
 });
 
+// Game Loop
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
@@ -76,4 +85,5 @@ function animate() {
 
   renderer.render(scene, camera);
 }
+
 animate();
