@@ -6,7 +6,7 @@ import { LevelMap } from './LevelMap.js';
 import { Player } from './Player.js';
 import { Guardian } from './Guardian.js';
 
-// Setup de Entrada e Cena
+// 1. Setup Base
 Input.init();
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(Config.COLORS.background);
@@ -25,11 +25,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
-
-// Mapeamento de tom cinematográfico para controle de brilho e contraste
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = Config.LIGHTS.exposure;
-
+if (Config.LIGHTS?.exposure) renderer.toneMappingExposure = Config.LIGHTS.exposure;
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -38,16 +34,18 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Instanciação dos Sistemas
+// 2. Instanciação dos Sistemas e Entidades
 const lightManager = new LightManager(scene);
 const level = new LevelMap(scene);
 level.build();
 
 const player = new Player(scene, level);
-const guardian = new Guardian(scene, new THREE.Vector3(0, 0, -4));
+const guardian = new Guardian(scene, level, player, 1, 3);
 const cameraManager = new CameraManager(camera, player);
 
-// HUD / Toggles de Demonstração
+// 3. Estado do Jogo e Interface (HUD)
+let isGameOver = false;
+
 function updateUI() {
   const modes = { 1: "Terceira Pessoa", 2: "Top-Down (Tática)", 3: "Primeira Pessoa" };
   document.getElementById('ui-cam').innerText = modes[cameraManager.mode];
@@ -57,6 +55,7 @@ function updateUI() {
     el.innerText = lightObj.visible ? "ON" : "OFF";
     el.className = lightObj.visible ? "status-on" : "status-off";
   };
+
   updateLuz('ui-l1', lightManager.ambientLight);
   updateLuz('ui-l2', lightManager.hemiLight);
   updateLuz('ui-l3', lightManager.moonLight);
@@ -65,6 +64,13 @@ function updateUI() {
 
 window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
+
+  // Se perdeu, trava os atalhos e escuta apenas o reinício
+  if (isGameOver) {
+    if (key === 'r') location.reload();
+    return;
+  }
+
   if (key === 'c') cameraManager.toggleMode();
   if (key === '1') lightManager.toggle('ambient');
   if (key === '2') lightManager.toggle('hemi');
@@ -73,16 +79,25 @@ window.addEventListener('keydown', (e) => {
   updateUI();
 });
 
-// Game Loop
+// 4. Game Loop Principal
 const clock = new THREE.Clock();
+
 function animate() {
   requestAnimationFrame(animate);
   const deltaTime = Math.min(clock.getDelta(), 0.1);
 
-  player.update(deltaTime);
-  guardian.update(deltaTime);
-  cameraManager.update();
+  if (!isGameOver) {
+    player.update(deltaTime);
+    guardian.update(deltaTime);
 
+    // Verifica colisão entre o Guardião e o Jogador
+    if (guardian.group.position.distanceTo(player.group.position) < 1.8) {
+      isGameOver = true;
+      document.getElementById('game-over').style.display = 'flex';
+    }
+  }
+
+  cameraManager.update();
   renderer.render(scene, camera);
 }
 
