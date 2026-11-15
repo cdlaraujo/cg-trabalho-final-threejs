@@ -43,7 +43,14 @@ level.build();
 const player = new Player(scene, level);
 const guardian = new Guardian(scene, level, player, 1, 3);
 const relics = new RelicManager(scene, level, 4);
-const cameraManager = new CameraManager(camera, player);
+const cameraManager = new CameraManager(camera, player, level);
+
+// Permite girar a câmera com o mouse ao clicar no canvas em 1ª pessoa
+renderer.domElement.addEventListener('click', () => {
+  if (!isGameOver && cameraManager.mode === 3 && document.pointerLockElement !== renderer.domElement) {
+    renderer.domElement.requestPointerLock?.();
+  }
+});
 
 // 3. Estado do Jogo e Interface (HUD)
 let isGameOver = false;
@@ -67,13 +74,17 @@ function updateUI() {
 window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
 
-  // Se ganhou ou perdeu, trava os controles e escuta apenas o reinício
   if (isGameOver) {
     if (key === 'r') location.reload();
     return;
   }
 
-  if (key === 'c') cameraManager.toggleMode();
+  if (key === 'c') {
+    const newMode = cameraManager.toggleMode();
+    if (newMode !== 3 && document.pointerLockElement) {
+      document.exitPointerLock?.();
+    }
+  }
   if (key === '1') lightManager.toggle('ambient');
   if (key === '2') lightManager.toggle('hemi');
   if (key === '3') lightManager.toggle('moon');
@@ -89,27 +100,27 @@ function animate() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
 
   if (!isGameOver) {
-    player.update(deltaTime);
+    player.update(deltaTime, cameraManager.mode);
     guardian.update(deltaTime);
 
-    // Atualiza relíquias, pontuação e verifica condição de Vitória
     if (relics.update(deltaTime, player.group.position)) {
       document.getElementById('ui-score').innerText = `${relics.collected} / ${relics.total}`;
 
       if (relics.collected >= relics.total) {
         isGameOver = true;
+        if (document.pointerLockElement) document.exitPointerLock?.();
         document.getElementById('victory').style.display = 'flex';
       }
     }
 
-    // Verifica colisão com o Guardião (condição de Derrota)
     if (!isGameOver && guardian.group.position.distanceTo(player.group.position) < 1.8) {
       isGameOver = true;
+      if (document.pointerLockElement) document.exitPointerLock?.();
       document.getElementById('game-over').style.display = 'flex';
     }
   }
 
-  cameraManager.update();
+  cameraManager.update(deltaTime);
   renderer.render(scene, camera);
 }
 

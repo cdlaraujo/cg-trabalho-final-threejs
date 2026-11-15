@@ -1,12 +1,23 @@
 export const Config = {
   CAMERA: {
     fov: 60,
+    firstPersonFov: 75,
     near: 0.1,
-    far: 1000
+    far: 1000,
+    thirdPerson: {
+      height: 10.5,
+      distance: 8.5,
+      smoothing: 10
+    },
+    topDown: {
+      height: 22
+    }
   },
 
   PLAYER: {
     speed: 5.0,
+    turnSpeed: 2.6,
+    mouseSensitivity: 0.004,
     radius: 0.55
   },
 
@@ -43,7 +54,6 @@ export const Config = {
     wood: './assets/textures/wood.png'
   },
 
-  // Central de Iluminação
   LIGHTS: {
     exposure: 1.1,
     ambient: { color: 0x0a0e17, intensity: 0.15 },
@@ -53,8 +63,8 @@ export const Config = {
       color: 0xed8936,
       intensity: 3.2,
       distance: 14,
-      decay: 2,         // Decaimento quadrático físico
-      flicker: true     // Oscilação procedural de chama
+      decay: 2,
+      flicker: true
     }
   }
 };
