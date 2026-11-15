@@ -2,16 +2,16 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Crypt Guardian 3D - Entrega 03</title>
+  <title>Crypt Guardian 3D - Entrega Final</title>
   <style>
     body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; font-family: monospace; }
     canvas { display: block; width: 100vw; height: 100vh; }
-    
+
     #ui-container {
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       color: #00ffcc;
       padding: 15px;
       border: 1px solid #00ffcc;
@@ -23,12 +23,29 @@
     .ui-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #fff; text-decoration: underline; }
     .status-on { color: #00ff00; }
     .status-off { color: #ff3333; }
+
+    .overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      text-align: center;
+    }
+    .overlay h1 { font-size: 48px; margin: 0; }
+    .overlay p { color: #fff; font-size: 18px; margin: 10px 0 0; }
+    .overlay .restart-hint { color: #00ffcc; font-size: 14px; margin-top: 24px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <div id="ui-container">
-    <div class="ui-title">Painel de Demonstração (Entrega 03)</div>
+    <div class="ui-title">Crypt Guardian 3D</div>
+    <div class="ui-item" style="color: #ffd700; font-weight: bold; font-size: 15px;">Relíquias: <span id="ui-score">0 / 4</span></div>
+    <hr style="border: 0; border-top: 1px solid #333; margin: 10px 0;">
     <div class="ui-item">Câmera [C] : <span id="ui-cam">Terceira Pessoa</span></div>
     <div class="ui-item">Luz 1 [1] (Ambiente) : <span id="ui-l1" class="status-on">ON</span></div>
     <div class="ui-item">Luz 2 [2] (Hemisfério) : <span id="ui-l2" class="status-on">ON</span></div>
@@ -37,13 +54,19 @@
     <br>
     <div class="ui-item" style="color: #ccc;">Movimento: W, A, S, D</div>
   </div>
-  <div id="game-over" style="display: none; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85); color: #ff3333; flex-direction: column; justify-content: center; align-items: center; z-index: 20;">
-    <h1 style="font-size: 48px; margin: 0;">GAME OVER</h1>
-    <p style="color: #fff; font-size: 18px;">O Guardião alcançou você.</p>
-    <p style="color: #00ffcc; font-size: 14px; margin-top: 20px;">Pressione [R] para reiniciar</p>
+
+  <div id="game-over" class="overlay" style="color: #ff3333;">
+    <h1>GAME OVER</h1>
+    <p>O Guardião alcançou você.</p>
+    <p class="restart-hint">Pressione [R] para reiniciar</p>
   </div>
 
-  <!-- Importa o Main.js como módulo para permitir import/export ES6 -->
+  <div id="victory" class="overlay" style="color: #ffd700;">
+    <h1>VITÓRIA!</h1>
+    <p>Você recuperou todas as relíquias da cripta.</p>
+    <p class="restart-hint">Pressione [R] para jogar novamente</p>
+  </div>
+
   <script type="module" src="./src/Main.js"></script>
 </body>
 </html>

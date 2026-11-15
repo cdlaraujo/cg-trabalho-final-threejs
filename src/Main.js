@@ -5,6 +5,7 @@ import { CameraManager } from './CameraManager.js';
 import { LevelMap } from './LevelMap.js';
 import { Player } from './Player.js';
 import { Guardian } from './Guardian.js';
+import { RelicManager } from './RelicManager.js';
 
 // 1. Setup Base
 Input.init();
@@ -41,6 +42,7 @@ level.build();
 
 const player = new Player(scene, level);
 const guardian = new Guardian(scene, level, player, 1, 3);
+const relics = new RelicManager(scene, level, 4);
 const cameraManager = new CameraManager(camera, player);
 
 // 3. Estado do Jogo e Interface (HUD)
@@ -65,7 +67,7 @@ function updateUI() {
 window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
 
-  // Se perdeu, trava os atalhos e escuta apenas o reinício
+  // Se ganhou ou perdeu, trava os controles e escuta apenas o reinício
   if (isGameOver) {
     if (key === 'r') location.reload();
     return;
@@ -90,8 +92,18 @@ function animate() {
     player.update(deltaTime);
     guardian.update(deltaTime);
 
-    // Verifica colisão entre o Guardião e o Jogador
-    if (guardian.group.position.distanceTo(player.group.position) < 1.8) {
+    // Atualiza relíquias, pontuação e verifica condição de Vitória
+    if (relics.update(deltaTime, player.group.position)) {
+      document.getElementById('ui-score').innerText = `${relics.collected} / ${relics.total}`;
+
+      if (relics.collected >= relics.total) {
+        isGameOver = true;
+        document.getElementById('victory').style.display = 'flex';
+      }
+    }
+
+    // Verifica colisão com o Guardião (condição de Derrota)
+    if (!isGameOver && guardian.group.position.distanceTo(player.group.position) < 1.8) {
       isGameOver = true;
       document.getElementById('game-over').style.display = 'flex';
     }
