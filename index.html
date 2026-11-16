@@ -2,68 +2,112 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Crypt Guardian 3D - Entrega Final</title>
+  <title>Crypt Guardian 3D</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; font-family: monospace; }
+    body { margin: 0; overflow: hidden; background-color: #030305; user-select: none; font-family: monospace; }
     canvas { display: block; width: 100vw; height: 100vh; }
+
+    #danger-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(229, 62, 62, 0) 55%, rgba(180, 20, 20, 0.55) 100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 5;
+    }
 
     #ui-container {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.75);
-      color: #00ffcc;
-      padding: 15px;
-      border: 1px solid #00ffcc;
+      top: 14px;
+      left: 14px;
+      background: rgba(5, 7, 12, 0.78);
+      color: #e2e8f0;
+      padding: 14px 16px;
+      border: 1px solid rgba(237, 137, 54, 0.45);
       border-radius: 8px;
       pointer-events: none;
       z-index: 10;
+      min-width: 220px;
     }
-    .ui-item { margin-bottom: 8px; font-size: 14px; }
-    .ui-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #fff; text-decoration: underline; }
-    .status-on { color: #00ff00; }
-    .status-off { color: #ff3333; }
+    .ui-title {
+      font-weight: bold;
+      font-size: 15px;
+      margin-bottom: 10px;
+      color: #ed8936;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .ui-item { margin-bottom: 8px; font-size: 13px; }
+    .ui-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 10px 0; }
+
+    .stamina-wrapper {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    #ui-stamina-bar {
+      width: 100%;
+      height: 100%;
+      background: #38b2ac;
+      transition: width 0.08s linear, background-color 0.2s;
+    }
+
+    .state-patrol { color: #63b3ed; }
+    .state-search { color: #f6ad55; }
+    .state-hunt   { color: #fc8181; font-weight: bold; }
 
     .overlay {
       display: none;
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(2, 3, 6, 0.88);
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 20;
       text-align: center;
     }
-    .overlay h1 { font-size: 48px; margin: 0; }
-    .overlay p { color: #fff; font-size: 18px; margin: 10px 0 0; }
-    .overlay .restart-hint { color: #00ffcc; font-size: 14px; margin-top: 24px; }
+    .overlay h1 { font-size: 48px; margin: 0; letter-spacing: 2px; }
+    .overlay p { color: #e2e8f0; font-size: 18px; margin: 12px 0 0; }
+    .overlay .restart-hint { color: #ed8936; font-size: 14px; margin-top: 26px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+  <div id="danger-vignette"></div>
+
   <div id="ui-container">
-    <div class="ui-title">Crypt Guardian 3D</div>
-    <div class="ui-item" style="color: #ffd700; font-weight: bold; font-size: 15px;">Relíquias: <span id="ui-score">0 / 4</span></div>
-    <hr style="border: 0; border-top: 1px solid #333; margin: 10px 0;">
-    <div class="ui-item">Câmera [C] : <span id="ui-cam">Terceira Pessoa</span></div>
-    <div class="ui-item">Luz 1 [1] (Ambiente) : <span id="ui-l1" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 2 [2] (Hemisfério) : <span id="ui-l2" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 3 [3] (Direcional/Lua): <span id="ui-l3" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 4 [4] (Tocha Jogador) : <span id="ui-l4" class="status-on">ON</span></div>
-    <br>
-    <div class="ui-item" style="color: #ccc;">Movimento: W, A, S, D</div>
+    <div class="ui-title">Crypt Guardian</div>
+    <div class="ui-item" style="color: #ffd700; font-weight: bold; font-size: 15px;">
+      Relíquias: <span id="ui-score">0 / 4</span>
+    </div>
+    <div class="ui-item">
+      Guardião: <span id="ui-guardian-state" class="state-patrol">Patrulhando</span>
+    </div>
+    <div class="ui-item">
+      Fôlego:
+      <div class="stamina-wrapper">
+        <div id="ui-stamina-bar"></div>
+      </div>
+    </div>
+    <hr class="ui-divider">
+    <div class="ui-item">Câmera [C]: <span id="ui-cam">Terceira Pessoa</span></div>
+    <div class="ui-item" style="color: #a0aec0; font-size: 12px;">Mover: WASD | Correr: Shift</div>
   </div>
 
-  <div id="game-over" class="overlay" style="color: #ff3333;">
-    <h1>GAME OVER</h1>
-    <p>O Guardião alcançou você.</p>
-    <p class="restart-hint">Pressione [R] para reiniciar</p>
+  <div id="game-over" class="overlay" style="color: #e53e3e;">
+    <h1>VOCÊ FOI CAPTURADO</h1>
+    <p>O Guardião das Sombras alcançou você.</p>
+    <p class="restart-hint">Pressione [R] para tentar novamente</p>
   </div>
 
   <div id="victory" class="overlay" style="color: #ffd700;">
-    <h1>VITÓRIA!</h1>
-    <p>Você recuperou todas as relíquias da cripta.</p>
+    <h1>CRIPTA CONQUISTADA!</h1>
+    <p>Você recuperou todas as 4 relíquias e sobreviveu à escuridão.</p>
     <p class="restart-hint">Pressione [R] para jogar novamente</p>
   </div>
 
