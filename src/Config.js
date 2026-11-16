@@ -1,50 +1,82 @@
 export const Config = {
   CAMERA: {
     fov: 60,
-    firstPersonFov: 75,
+    firstPersonFov: 75, // Ângulo de visão maior para não dar enjoo
     near: 0.1,
-    far: 1000,
-    thirdPerson: {
-      height: 10.5,
-      distance: 8.5,
-      smoothing: 10
-    },
-    topDown: {
-      height: 22
-    }
+    far: 1000
   },
 
   PLAYER: {
-    speed: 5.0,
-    turnSpeed: 2.6,
-    mouseSensitivity: 0.004,
-    radius: 0.55
+    startCell: { r: 7, c: 7 },
+    speed: 4.8,
+    sprintSpeed: 8.2,
+    radius: 0.52,
+    maxStamina: 100,
+    staminaDrain: 45,
+    staminaRegen: 22,
+    exhaustedThreshold: 25,
+    mouseSensitivity: 0.003 // Velocidade do giro da câmera
+  },
+
+  GUARDIAN: {
+    startCell: { r: 1, c: 7 },
+    catchRadius: 1.75,
+    searchDuration: 4.5,
+    difficultyTiers: [
+      { patrolSpeed: 2.4, huntSpeed: 4.1, visionRange: 16, walkHearing: 5.5, sprintHearing: 11.0, coreIntensity: 1.2, intercept: false },
+      { patrolSpeed: 2.8, huntSpeed: 4.5, visionRange: 19, walkHearing: 6.5, sprintHearing: 13.0, coreIntensity: 1.8, intercept: false },
+      { patrolSpeed: 3.3, huntSpeed: 5.0, visionRange: 22, walkHearing: 7.5, sprintHearing: 15.0, coreIntensity: 2.5, intercept: true  },
+      { patrolSpeed: 3.8, huntSpeed: 5.5, visionRange: 26, walkHearing: 9.0, sprintHearing: 17.5, coreIntensity: 3.4, intercept: true  }
+    ]
+  },
+
+  RELICS: {
+    total: 4,
+    spawnCells: [
+      { r: 1, c: 1 }, { r: 1, c: 13 }, { r: 13, c: 1 }, { r: 13, c: 13 }
+    ]
   },
 
   LEVEL: {
     blockSize: 4,
     grid: [
-      [1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1]
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ],
+    wallTorches: [
+      { r: 2, c: 7, dir: 'S' }, { r: 12, c: 7, dir: 'N' },
+      { r: 7, c: 6, dir: 'N' }, { r: 7, c: 8, dir: 'S' },
+      { r: 4, c: 4, dir: 'S' }, { r: 4, c: 10, dir: 'S' },
+      { r: 10, c: 4, dir: 'N' }, { r: 10, c: 10, dir: 'N' }
     ]
   },
 
   COLORS: {
-    background: 0x050508,
-    fog: 0x050508,
+    background: 0x010102,
+    fog: 0x010102,
     floor: 0x161b22,
     wall: 0x2d3748,
     golem: 0x4a5568,
-    golemEye: 0xe53e3e,
+    golemEye: 0xff2a2a,
     playerSkin: 0x718096,
     playerClothes: 0x2b6cb0,
     playerLeather: 0x2d3748,
-    buckle: 0xd69e2e
+    buckle: 0xd69e2e,
+    relic: 0x00f5d4,
+    wallTorch: 0xff7b29
   },
 
   TEXTURES: {
@@ -55,16 +87,12 @@ export const Config = {
   },
 
   LIGHTS: {
-    exposure: 1.1,
-    ambient: { color: 0x0a0e17, intensity: 0.15 },
-    hemi:    { sky: 0x1e293b, ground: 0x050508, intensity: 0.2 },
-    moon:    { color: 0x5c7cfa, intensity: 0.35, pos: [8, 16, 6] },
-    torch: {
-      color: 0xed8936,
-      intensity: 3.2,
-      distance: 14,
-      decay: 2,
-      flicker: true
-    }
+    exposure: 0.85,          // Reduzido para não estourar a soma das luzes
+    fogDensity: 0.05,
+    ambient: { color: 0x070a12, intensity: 0.02 }, // Quase nula
+    hemi:    { sky: 0x121a2b, ground: 0x020204, intensity: 0.03 },
+    moon:    { color: 0x3b5284, intensity: 0.08, pos: [12, 24, 10] },
+    playerTorch: { color: 0xed8936, intensity: 3.4, distance: 15, decay: 2 },
+    wallTorch: { color: 0xff7b29, intensity: 1.5, distance: 11, decay: 2 } // Mais fracas
   }
 };

@@ -1,76 +1,68 @@
+import { Config } from './Config.js';
+
 export class RelicManager {
-  constructor(scene, levelMap, total = 4) {
+  constructor(scene, levelMap, total = Config.RELICS.total) {
     this.scene = scene;
     this.level = levelMap;
     this.total = total;
     this.collected = 0;
     this.relics = [];
     this.timer = 0;
-
-    this.spawnRandomRelics();
+    this.spawnRelics();
   }
 
-  spawnRandomRelics() {
-    const validCells = [];
-    const rows = this.level.grid.length;
-    const cols = this.level.grid[0].length;
-
-    // 1. Mapeia todo chão livre (0), ignorando os spawns do Player (3,3) e Golem (1,3)
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const isPlayerSpawn = (r === 3 && c === 3);
-        const isGuardianSpawn = (r === 1 && c === 3);
-
-        if (this.level.grid[r][c] === 0 && !isPlayerSpawn && !isGuardianSpawn) {
-          validCells.push({ r, c });
-        }
-      }
-    }
-
-    // 2. Embaralha e pega as 4 primeiras células sorteadas
-    validCells.sort(() => Math.random() - 0.5);
-    const chosenCells = validCells.slice(0, this.total);
-
-    // 3. Cria os cristais 3D (com brilho próprio para serem visíveis no escuro)
-    const geo = new THREE.OctahedronGeometry(0.4);
+  spawnRelics() {
+    const geo = new THREE.OctahedronGeometry(0.45, 0);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0xffd700,
-      emissive: 0xd69e2e,
-      emissiveIntensity: 0.8,
+      color: Config.COLORS.relic,
+      emissive: Config.COLORS.relic,
+      emissiveIntensity: 0.7,
       roughness: 0.2,
       metalness: 0.8
     });
 
-    chosenCells.forEach(cell => {
-      const mesh = new THREE.Mesh(geo, mat);
-      const pos = this.level.cellToWorld(cell.r, cell.c);
-      mesh.position.set(pos.x, 1.0, pos.z);
-      mesh.castShadow = true;
-      this.scene.add(mesh);
-      this.relics.push(mesh);
+    const cells = Config.RELICS.spawnCells.slice(0, this.total);
+
+    cells.forEach((cell) => {
+      if (!this.level.isWalkable(cell.r, cell.c)) return;
+
+      const worldPos = this.level.cellToWorld(cell.r, cell.c);
+      const group = new THREE.Group();
+      group.position.set(worldPos.x, 1.35, worldPos.z);
+
+      const crystal = new THREE.Mesh(geo, mat);
+      crystal.castShadow = true;
+      group.add(crystal);
+
+      // Brilho sutil para destacar o cristal no fundo dos becos escuros
+      const glow = new THREE.PointLight(Config.COLORS.relic, 1.1, 7, 2);
+      group.add(glow);
+
+      this.scene.add(group);
+      this.relics.push({ group, crystal, active: true });
     });
   }
 
   update(deltaTime, playerPos) {
     this.timer += deltaTime * 3;
-    let collectedNow = false;
+    let justCollected = false;
 
-    for (let i = this.relics.length - 1; i >= 0; i--) {
-      const relic = this.relics[i];
+    for (const item of this.relics) {
+      if (!item.active) continue;
 
-      // Animação simples de rotação e flutuação
-      relic.rotation.y += deltaTime * 2;
-      relic.position.y = 1.0 + Math.sin(this.timer + i) * 0.15;
+      item.crystal.rotation.y += deltaTime * 2.2;
+      item.group.position.y = 1.35 + Math.sin(this.timer) * 0.18;
 
-      // Checa proximidade com o jogador
-      if (relic.position.distanceTo(playerPos) < 1.5) {
-        this.scene.remove(relic);
-        this.relics.splice(i, 1);
+      const dx = item.group.position.x - playerPos.x;
+      const dz = item.group.position.z - playerPos.z;
+      if (Math.hypot(dx, dz) < 1.5) {
+        item.active = false;
+        this.scene.remove(item.group);
         this.collected++;
-        collectedNow = true;
+        justCollected = true;
       }
     }
 
-    return collectedNow;
+    return justCollected;
   }
 }
