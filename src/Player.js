@@ -16,6 +16,7 @@ export class Player extends Entity {
     this.stamina = Config.PLAYER.maxStamina;
     this.isExhausted = false;
     this.isSprinting = false;
+    this.isMoving = false;
     this.isFirstPerson = false;
 
     this.buildModel();
@@ -175,6 +176,7 @@ export class Player extends Entity {
 
     const moveVec = this.getMoveDirection(deltaTime, isFP);
     const isMoving = moveVec !== null;
+    this.isMoving = isMoving;
     this.updateStamina(deltaTime, isMoving);
 
     if (isMoving) {

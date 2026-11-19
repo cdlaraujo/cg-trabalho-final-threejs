@@ -44,8 +44,22 @@ const level = new LevelMap(scene);
 level.build();
 
 const player = new Player(scene, level);
-const guardian = new Guardian(scene, level, player);
 const cameraManager = new CameraManager(camera, player, level);
+
+const guardians = [];
+function setGuardianCount(count) {
+  while (guardians.length > count) {
+    const removed = guardians.pop();
+    scene.remove(removed.group);
+  }
+  while (guardians.length < count) {
+    const spawn = Config.GUARDIAN.spawns[guardians.length];
+    const g = new Guardian(scene, level, player, spawn);
+    g.onRelicCollected(level.collectedRelics);
+    guardians.push(g);
+  }
+}
+setGuardianCount(1);
 
 let isGameOver = false;
 const releasePointer = () => {
@@ -70,6 +84,8 @@ window.addEventListener('keydown', (e) => {
     const mode = cameraManager.toggleMode();
     HUD.setCameraMode(mode);
     if (mode === 1) releasePointer();
+  } else if (['1', '2', '3', '4'].includes(key)) {
+    setGuardianCount(Number(key));
   }
 });
 
@@ -83,14 +99,24 @@ function animate() {
 
   if (!isGameOver) {
     player.update(deltaTime, cameraManager.mode);
-    guardian.update(deltaTime);
 
-    const distToGuardian = guardian.group.position.distanceTo(player.group.position);
-    HUD.update(player, guardian.getState(), distToGuardian);
+    let minDist = Infinity;
+    let topState = 'PATROL';
+    for (const g of guardians) {
+      g.update(deltaTime);
+      const dist = g.group.position.distanceTo(player.group.position);
+      if (dist < minDist) minDist = dist;
+
+      const state = g.getState();
+      if (state === 'HUNT') topState = 'HUNT';
+      else if (state === 'SEARCH' && topState !== 'HUNT') topState = 'SEARCH';
+    }
+
+    HUD.update(player, topState, minDist);
 
     if (relicCollected) {
       HUD.setScore(level.collectedRelics, level.totalRelics);
-      guardian.onRelicCollected(level.collectedRelics);
+      for (const g of guardians) g.onRelicCollected(level.collectedRelics);
 
       if (level.collectedRelics >= level.totalRelics) {
         isGameOver = true;
@@ -99,7 +125,7 @@ function animate() {
       }
     }
 
-    if (!isGameOver && distToGuardian < Config.GUARDIAN.catchRadius) {
+    if (!isGameOver && minDist < Config.GUARDIAN.catchRadius) {
       isGameOver = true;
       releasePointer();
       HUD.showGameOver();

@@ -17,6 +17,7 @@ export class GuardianAI {
     this.state = 'PATROL'; // 'PATROL' | 'HUNT' | 'SEARCH'
     this.lastKnownCell = null;
     this.searchTimer = 0;
+    this.isDirectPursuit = false;
     this.tier = Config.GUARDIAN.difficultyTiers[0];
   }
 
@@ -42,7 +43,7 @@ export class GuardianAI {
 
   // Encontra o próximo passo ótimo pelo labirinto usando Busca em Largura (BFS)
   findNextStepBFS(startCell, goalCell) {
-    if (startCell.r === goalCell.r && startCell.c === goalCell.c) return null;
+    if (!goalCell || (startCell.r === goalCell.r && startCell.c === goalCell.c)) return null;
 
     const queue = [{ r: startCell.r, c: startCell.c, firstStep: null }];
     const visited = new Set([`${startCell.r},${startCell.c}`]);
@@ -68,7 +69,7 @@ export class GuardianAI {
 
   getInterceptCell(player) {
     const baseCell = this.level.worldToCell(player.group.position.x, player.group.position.z);
-    if (!this.tier.intercept) return baseCell;
+    if (!this.tier.intercept || !player.isMoving) return baseCell;
 
     const rotY = player.group.rotation.y;
     const stepR = Math.round(Math.cos(rotY));
@@ -120,15 +121,35 @@ export class GuardianAI {
     this.updatePerception(currentPos, player, deltaTime);
 
     const speed = this.state === 'PATROL' ? this.tier.patrolSpeed : this.tier.huntSpeed;
-    let lookAt = null;
+    const currentCell = this.level.worldToCell(currentPos.x, currentPos.z);
+    const playerCell = this.level.worldToCell(player.group.position.x, player.group.position.z);
 
-    if (currentPos.distanceTo(this.targetPos) < 0.08) {
-      currentPos.copy(this.targetPos);
+    // Perseguição direta quando ambos estão na mesma célula (avança até capturar)
+    if (this.state === 'HUNT' && currentCell.r === playerCell.r && currentCell.c === playerCell.c) {
+      this.isDirectPursuit = true;
+      this.gridPos = currentCell;
+      this.targetPos = player.group.position.clone();
+      this.targetPos.y = currentPos.y;
+
+      const vector = new THREE.Vector3().subVectors(this.targetPos, currentPos);
+      if (vector.lengthSq() > 0.0001) vector.normalize();
+      return { vector, lookAt: this.targetPos, speed };
+    }
+
+    let lookAt = null;
+    const reachedWaypoint = currentPos.distanceTo(this.targetPos) < 0.08;
+
+    if (reachedWaypoint || this.isDirectPursuit) {
+      if (reachedWaypoint) currentPos.copy(this.targetPos);
+      this.isDirectPursuit = false;
+      this.gridPos = currentCell;
+
       let nextCell = null;
 
       if (this.state === 'HUNT') {
         const goalCell = this.getInterceptCell(player);
         nextCell = this.findNextStepBFS(this.gridPos, goalCell) ||
+                   this.findNextStepBFS(this.gridPos, playerCell) ||
                    this.findNextStepBFS(this.gridPos, this.lastKnownCell);
       } else if (this.state === 'SEARCH' && this.lastKnownCell) {
         nextCell = this.findNextStepBFS(this.gridPos, this.lastKnownCell);

@@ -20,7 +20,12 @@ export const Config = {
   },
 
   GUARDIAN: {
-    startCell: { r: 1, c: 7 },
+    spawns: [
+      { r: 1,  c: 7,  color: 0xff2a2a }, // Norte - Carmesim
+      { r: 13, c: 7,  color: 0xc026d3 }, // Sul   - Violeta
+      { r: 7,  c: 1,  color: 0x22c55e }, // Oeste - Esmeralda
+      { r: 7,  c: 13, color: 0x3b82f6 }  // Leste - Safira
+    ],
     catchRadius: 1.75,
     searchDuration: 4.5,
     difficultyTiers: [
@@ -68,7 +73,6 @@ export const Config = {
   COLORS: {
     background: 0x010102,
     fog: 0x010102,
-    golemEye: 0xff2a2a,
     playerSkin: 0x718096,
     playerClothes: 0x2b6cb0,
     playerLeather: 0x2d3748,
