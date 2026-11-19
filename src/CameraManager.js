@@ -26,15 +26,14 @@ export class CameraManager {
 
   resetWallOpacity() {
     for (const wall of this.occludedWalls) {
-      wall.material.transparent = false;
-      wall.material.opacity = 1.0;
+      if (this.level?.wallMat) wall.material = this.level.wallMat;
     }
     this.occludedWalls = [];
   }
 
   handleWallOcclusion(targetPos) {
     this.resetWallOpacity();
-    if (!this.level || !this.level.wallMeshes) return;
+    if (!this.level?.wallMeshes || !this.level.occludedWallMat) return;
 
     const dir = new THREE.Vector3().subVectors(targetPos, this.camera.position);
     const dist = dir.length();
@@ -46,9 +45,10 @@ export class CameraManager {
     const hits = this.raycaster.intersectObjects(this.level.wallMeshes, false);
     for (const hit of hits) {
       const wall = hit.object;
-      wall.material.transparent = true;
-      wall.material.opacity = 0.25;
-      this.occludedWalls.push(wall);
+      if (wall.material !== this.level.occludedWallMat) {
+        wall.material = this.level.occludedWallMat;
+        this.occludedWalls.push(wall);
+      }
     }
   }
 

@@ -16,7 +16,7 @@ scene.add(new THREE.AmbientLight(ambient.color, ambient.intensity));
 scene.add(new THREE.HemisphereLight(hemi.sky, hemi.ground, hemi.intensity));
 const moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
 moonLight.position.set(...moon.pos);
-scene.add(moonLight, moonLight.target);
+scene.add(moonLight);
 
 const camera = new THREE.PerspectiveCamera(
   Config.CAMERA.fov,

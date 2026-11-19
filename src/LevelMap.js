@@ -1,4 +1,5 @@
 import { Config } from './Config.js';
+import { loadTexture, updateTorchFlicker } from './Entity.js';
 
 const TORCH_DIRS = {
   N: { dx: 0, dz: -1, rotX: -Math.PI / 5, rotZ: 0 },
@@ -27,15 +28,6 @@ export class LevelMap {
     this.collectedRelics = 0;
     this.totalRelics = Config.RELICS.total;
     this.relicTimer = 0;
-
-    this.textureLoader = new THREE.TextureLoader();
-  }
-
-  loadTexture(path, repeatX = 1, repeatY = 1) {
-    const tex = this.textureLoader.load(path);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeatX, repeatY);
-    return tex;
   }
 
   cellToWorld(r, c) {
@@ -60,7 +52,7 @@ export class LevelMap {
   build() {
     // 1. Piso
     const floorMat = new THREE.MeshStandardMaterial({
-      map: this.loadTexture(Config.TEXTURES.floor, this.cols, this.rows),
+      map: loadTexture(Config.TEXTURES.floor, this.cols, this.rows),
       roughness: 0.75,
       metalness: 0.1
     });
@@ -72,18 +64,21 @@ export class LevelMap {
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // 2. Paredes (material clonado para oclusão individual na 3ª pessoa)
+    // 2. Paredes (apenas dois materiais compartilhados: normal e translúcido)
     const wallGeo = new THREE.BoxGeometry(this.blockSize, 4, this.blockSize);
-    const baseWallMat = new THREE.MeshStandardMaterial({
-      map: this.loadTexture(Config.TEXTURES.wall, 2, 2),
+    this.wallMat = new THREE.MeshStandardMaterial({
+      map: loadTexture(Config.TEXTURES.wall, 2, 2),
       roughness: 0.88,
       metalness: 0.12
     });
+    this.occludedWallMat = this.wallMat.clone();
+    this.occludedWallMat.transparent = true;
+    this.occludedWallMat.opacity = 0.25;
 
     this.grid.forEach((row, r) => {
       row.forEach((cell, c) => {
         if (cell !== 1) return;
-        const wall = new THREE.Mesh(wallGeo, baseWallMat.clone());
+        const wall = new THREE.Mesh(wallGeo, this.wallMat);
         wall.position.copy(this.cellToWorld(r, c)).setY(2);
         wall.castShadow = wall.receiveShadow = true;
 
@@ -99,7 +94,7 @@ export class LevelMap {
   }
 
   buildWallTorches() {
-    const handleMat = new THREE.MeshStandardMaterial({ map: this.loadTexture(Config.TEXTURES.wood), roughness: 0.9 });
+    const handleMat = new THREE.MeshStandardMaterial({ map: loadTexture(Config.TEXTURES.wood), roughness: 0.9 });
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a202c, metalness: 0.7, roughness: 0.4 });
     const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa94d });
 
@@ -167,12 +162,7 @@ export class LevelMap {
     // Oscilação das tochas
     this.flickerTimer += deltaTime * 7.5;
     for (const torch of this.wallTorches) {
-      const wave =
-        Math.sin(this.flickerTimer + torch.phase) * 0.18 +
-        Math.cos(this.flickerTimer * 2.3 + torch.phase) * 0.1;
-      torch.light.intensity = torch.baseIntensity + wave;
-      const scale = 1 + wave * 0.35;
-      torch.flame.scale.set(scale, scale * 1.25, scale);
+      updateTorchFlicker(torch.light, torch.flame, torch.baseIntensity, this.flickerTimer, torch.phase, 0.18);
     }
 
     // Flutuação e coleta das relíquias
