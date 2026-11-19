@@ -1,6 +1,6 @@
 import { Config } from './Config.js';
 import { Input } from './UI.js';
-import { Entity } from './Entity.js';
+import { Entity, loadTexture, updateTorchFlicker } from './Entity.js';
 
 const isPressed = (a, b) => Input.isPressed(a) || Input.isPressed(b);
 const getAxis = (posA, posB, negA, negB) =>
@@ -47,17 +47,13 @@ export class Player extends Entity {
     this.rightArm = this.addMesh(armGeo, clothesMat, this.torso, [0.55, 0.5, 0]);
 
     const handGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
-    this.leftHand = this.addMesh(handGeo, skinMat, this.leftArm, [0, -0.85, 0]);
-    this.rightHand = this.addMesh(handGeo, skinMat, this.rightArm, [0, -0.85, 0]);
+    this.addMesh(handGeo, skinMat, this.leftArm, [0, -0.85, 0]);
+    this.addMesh(handGeo, skinMat, this.rightArm, [0, -0.85, 0]);
 
     // Tocha na mão direita
-    const woodTex = new THREE.TextureLoader().load(Config.TEXTURES.wood);
-    woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
-    woodTex.repeat.set(1, 2);
-
     const torch = this.addMesh(
       new THREE.CylinderGeometry(0.05, 0.06, 0.7),
-      new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ map: loadTexture(Config.TEXTURES.wood, 1, 2), roughness: 0.85 }),
       this.rightArm,
       [0, -0.8, 0.3],
       false
@@ -107,17 +103,13 @@ export class Player extends Entity {
 
   updateTorch(deltaTime) {
     this.flickerTimer += deltaTime * 9;
-    const flicker = Math.sin(this.flickerTimer) * 0.22 + Math.cos(this.flickerTimer * 2.7) * 0.12;
-    this.torchLight.intensity = Config.LIGHTS.playerTorch.intensity + flicker;
-    const scale = 1 + flicker * 0.35;
-    this.torchFlame.scale.set(scale, scale * 1.3, scale);
+    updateTorchFlicker(this.torchLight, this.torchFlame, Config.LIGHTS.playerTorch.intensity, this.flickerTimer, 0, 0.22);
   }
 
   getMoveDirection(deltaTime, isFP) {
     if (isFP) {
       const turnInput = getAxis('a', 'arrowleft', 'd', 'arrowright');
-      const turnSpeed = Config.PLAYER.turnSpeed || 2.6;
-      this.group.rotation.y += turnInput * turnSpeed * deltaTime - Input.consumeMouseX() * Config.PLAYER.mouseSensitivity;
+      this.group.rotation.y += turnInput * Config.PLAYER.turnSpeed * deltaTime - Input.consumeMouseX() * Config.PLAYER.mouseSensitivity;
 
       const forward = getAxis('w', 'arrowup', 's', 'arrowdown');
       if (forward === 0) return null;

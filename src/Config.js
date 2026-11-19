@@ -15,6 +15,7 @@ export const Config = {
     staminaDrain: 45,
     staminaRegen: 22,
     exhaustedThreshold: 25,
+    turnSpeed: 2.6,
     mouseSensitivity: 0.003 // Velocidade do giro da câmera
   },
 
@@ -67,16 +68,12 @@ export const Config = {
   COLORS: {
     background: 0x010102,
     fog: 0x010102,
-    floor: 0x161b22,
-    wall: 0x2d3748,
-    golem: 0x4a5568,
     golemEye: 0xff2a2a,
     playerSkin: 0x718096,
     playerClothes: 0x2b6cb0,
     playerLeather: 0x2d3748,
     buckle: 0xd69e2e,
-    relic: 0x00f5d4,
-    wallTorch: 0xff7b29
+    relic: 0x00f5d4
   },
 
   TEXTURES: {

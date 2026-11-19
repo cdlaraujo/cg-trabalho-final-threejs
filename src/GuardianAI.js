@@ -120,37 +120,34 @@ export class GuardianAI {
     this.updatePerception(currentPos, player, deltaTime);
 
     const speed = this.state === 'PATROL' ? this.tier.patrolSpeed : this.tier.huntSpeed;
-    const distToTarget = currentPos.distanceTo(this.targetPos);
+    let lookAt = null;
 
-    if (distToTarget >= 0.08) {
-      const dir = new THREE.Vector3().subVectors(this.targetPos, currentPos).normalize();
-      return { action: 'move', vector: dir, speed };
-    }
+    if (currentPos.distanceTo(this.targetPos) < 0.08) {
+      currentPos.copy(this.targetPos);
+      let nextCell = null;
 
-    currentPos.copy(this.targetPos);
-    let nextCell = null;
-
-    if (this.state === 'HUNT') {
-      const goalCell = this.getInterceptCell(player);
-      nextCell = this.findNextStepBFS(this.gridPos, goalCell) ||
-                 this.findNextStepBFS(this.gridPos, this.lastKnownCell);
-    } else if (this.state === 'SEARCH' && this.lastKnownCell) {
-      nextCell = this.findNextStepBFS(this.gridPos, this.lastKnownCell);
-      if (!nextCell) {
-        this.state = 'PATROL';
-        this.lastKnownCell = null;
+      if (this.state === 'HUNT') {
+        const goalCell = this.getInterceptCell(player);
+        nextCell = this.findNextStepBFS(this.gridPos, goalCell) ||
+                   this.findNextStepBFS(this.gridPos, this.lastKnownCell);
+      } else if (this.state === 'SEARCH' && this.lastKnownCell) {
+        nextCell = this.findNextStepBFS(this.gridPos, this.lastKnownCell);
+        if (!nextCell) {
+          this.state = 'PATROL';
+          this.lastKnownCell = null;
+        }
       }
-    }
 
-    if (!nextCell) nextCell = this.choosePatrolStep();
+      if (!nextCell) nextCell = this.choosePatrolStep();
+      if (!nextCell) return { vector: null, lookAt: null, speed };
 
-    if (nextCell) {
       this.prevGridPos = { ...this.gridPos };
       this.gridPos = nextCell;
       this.targetPos = this.level.cellToWorld(nextCell.r, nextCell.c);
-      return { action: 'turn', lookAt: this.targetPos, speed };
+      lookAt = this.targetPos;
     }
 
-    return { action: 'idle', speed };
+    const vector = new THREE.Vector3().subVectors(this.targetPos, currentPos).normalize();
+    return { vector, lookAt, speed };
   }
 }

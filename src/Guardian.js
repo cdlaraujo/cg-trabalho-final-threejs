@@ -1,6 +1,6 @@
 import { Config } from './Config.js';
 import { GuardianAI } from './GuardianAI.js';
-import { Entity } from './Entity.js';
+import { Entity, loadTexture } from './Entity.js';
 
 export class Guardian extends Entity {
   constructor(scene, levelMap, player) {
@@ -14,9 +14,11 @@ export class Guardian extends Entity {
   }
 
   buildModel() {
-    const tex = new THREE.TextureLoader().load(Config.TEXTURES.golem);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.2 });
+    const mat = new THREE.MeshStandardMaterial({
+      map: loadTexture(Config.TEXTURES.golem),
+      roughness: 0.9,
+      metalness: 0.2
+    });
     const eyeMat = new THREE.MeshBasicMaterial({ color: Config.COLORS.golemEye });
 
     this.torso = this.addMesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), mat, this.group, [0, 2.0, 0]);
@@ -33,8 +35,8 @@ export class Guardian extends Entity {
 
     this.leftArm = this.addMesh(armGeo, mat, this.torso, [-1.1, 0.6, 0]);
     this.rightArm = this.addMesh(armGeo, mat, this.torso, [1.1, 0.6, 0]);
-    this.leftLeg = this.addMesh(legGeo, mat, this.torso, [-0.5, -0.9, 0]);
-    this.rightLeg = this.addMesh(legGeo, mat, this.torso, [0.5, -0.9, 0]);
+    this.addMesh(legGeo, mat, this.torso, [-0.5, -0.9, 0]);
+    this.addMesh(legGeo, mat, this.torso, [0.5, -0.9, 0]);
   }
 
   onRelicCollected(collectedCount) {
@@ -59,10 +61,11 @@ export class Guardian extends Entity {
     const huntBoost = this.ai.state === 'HUNT' ? 1.0 : 0.0;
     this.coreLight.intensity = this.ai.tier.coreIntensity + huntBoost + Math.sin(t * 2.5) * 0.35;
 
-    if (decision.action === 'move') {
-      this.group.position.add(decision.vector.multiplyScalar(decision.speed * deltaTime));
-    } else if (decision.action === 'turn') {
+    if (decision.lookAt) {
       this.group.lookAt(decision.lookAt);
+    }
+    if (decision.vector) {
+      this.group.position.add(decision.vector.multiplyScalar(decision.speed * deltaTime));
     }
   }
 }
