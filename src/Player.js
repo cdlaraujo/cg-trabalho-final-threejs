@@ -1,15 +1,15 @@
 import { Config } from './Config.js';
-import { Input } from './Input.js';
+import { Input } from './UI.js';
+import { Entity } from './Entity.js';
 
-export class Player {
+const isPressed = (a, b) => Input.isPressed(a) || Input.isPressed(b);
+const getAxis = (posA, posB, negA, negB) =>
+  (isPressed(posA, posB) ? 1 : 0) - (isPressed(negA, negB) ? 1 : 0);
+
+export class Player extends Entity {
   constructor(scene, levelMap) {
-    this.level = levelMap;
-    this.group = new THREE.Group();
-
-    const { r, c } = Config.PLAYER.startCell;
-    this.group.position.copy(this.level.cellToWorld(r, c));
+    super(scene, levelMap, Config.PLAYER.startCell);
     this.group.rotation.y = Math.PI; // Inicia olhando para o Norte
-    scene.add(this.group);
 
     this.walkTimer = 0;
     this.flickerTimer = 0;
@@ -25,99 +25,52 @@ export class Player {
     const skinMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerSkin, roughness: 0.7 });
     const clothesMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerClothes, roughness: 0.8 });
     const leatherMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerLeather, roughness: 0.9 });
-
-    // O material do torso é clonado para podermos deixá-lo invisível na 1ª pessoa sem afetar pernas/braços
-    this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat.clone());
-    this.torso.position.y = 1.4;
-    this.torso.castShadow = true;
-    this.group.add(this.torso);
-
-    this.belt = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), leatherMat);
-    this.belt.position.y = -0.45;
-    this.belt.castShadow = true;
-    this.torso.add(this.belt);
-
-    this.buckle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, 0.1, 0.05),
-      new THREE.MeshStandardMaterial({ color: Config.COLORS.buckle, metalness: 0.6, roughness: 0.4 })
-    );
-    this.buckle.position.set(0, -0.45, 0.29);
-    this.torso.add(this.buckle);
-
-    this.head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat);
-    this.head.position.y = 1.0;
-    this.head.castShadow = true;
-    this.torso.add(this.head);
-
+    const buckleMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.buckle, metalness: 0.6, roughness: 0.4 });
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
+
+    // Torso usa material clonado para ficar invisível na 1ª pessoa sem ocultar braços/pernas
+    this.torso = this.addMesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat.clone(), this.group, [0, 1.4, 0]);
+    this.belt = this.addMesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), leatherMat, this.torso, [0, -0.45, 0]);
+    this.buckle = this.addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.05), buckleMat, this.torso, [0, -0.45, 0.29]);
+    this.head = this.addMesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat, this.torso, [0, 1.0, 0]);
+
     const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.02);
+    this.addMesh(eyeGeo, eyeMat, this.head, [-0.12, 0.1, 0.26], false);
+    this.addMesh(eyeGeo, eyeMat, this.head, [0.12, 0.1, 0.26], false);
 
-    const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeLeft.position.set(-0.12, 0.1, 0.26);
-    this.head.add(eyeLeft);
+    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3).translate(0, -0.45, 0);
+    this.leftLeg = this.addMesh(legGeo, clothesMat, this.torso, [-0.25, -0.6, 0]);
+    this.rightLeg = this.addMesh(legGeo, clothesMat, this.torso, [0.25, -0.6, 0]);
 
-    const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeRight.position.set(0.12, 0.1, 0.26);
-    this.head.add(eyeRight);
-
-    const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
-    legGeo.translate(0, -0.45, 0);
-
-    this.leftLeg = new THREE.Mesh(legGeo, clothesMat);
-    this.leftLeg.position.set(-0.25, -0.6, 0);
-    this.leftLeg.castShadow = true;
-    this.torso.add(this.leftLeg);
-
-    this.rightLeg = new THREE.Mesh(legGeo, clothesMat);
-    this.rightLeg.position.set(0.25, -0.6, 0);
-    this.rightLeg.castShadow = true;
-    this.torso.add(this.rightLeg);
-
-    const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-    armGeo.translate(0, -0.4, 0);
-
-    this.leftArm = new THREE.Mesh(armGeo, clothesMat);
-    this.leftArm.position.set(-0.55, 0.5, 0);
-    this.leftArm.castShadow = true;
-    this.torso.add(this.leftArm);
-
-    this.rightArm = new THREE.Mesh(armGeo, clothesMat);
-    this.rightArm.position.set(0.55, 0.5, 0);
-    this.rightArm.castShadow = true;
-    this.torso.add(this.rightArm);
+    const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25).translate(0, -0.4, 0);
+    this.leftArm = this.addMesh(armGeo, clothesMat, this.torso, [-0.55, 0.5, 0]);
+    this.rightArm = this.addMesh(armGeo, clothesMat, this.torso, [0.55, 0.5, 0]);
 
     const handGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+    this.leftHand = this.addMesh(handGeo, skinMat, this.leftArm, [0, -0.85, 0]);
+    this.rightHand = this.addMesh(handGeo, skinMat, this.rightArm, [0, -0.85, 0]);
 
-    this.leftHand = new THREE.Mesh(handGeo, skinMat);
-    this.leftHand.position.y = -0.85;
-    this.leftHand.castShadow = true;
-    this.leftArm.add(this.leftHand);
+    // Tocha na mão direita
+    const woodTex = new THREE.TextureLoader().load(Config.TEXTURES.wood);
+    woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+    woodTex.repeat.set(1, 2);
 
-    this.rightHand = new THREE.Mesh(handGeo, skinMat);
-    this.rightHand.position.y = -0.85;
-    this.rightHand.castShadow = true;
-    this.rightArm.add(this.rightHand);
-
-    const textureLoader = new THREE.TextureLoader();
-    const woodTexture = textureLoader.load(Config.TEXTURES.wood);
-    woodTexture.wrapS = THREE.RepeatWrapping;
-    woodTexture.wrapT = THREE.RepeatWrapping;
-    woodTexture.repeat.set(1, 2);
-
-    const torch = new THREE.Mesh(
+    const torch = this.addMesh(
       new THREE.CylinderGeometry(0.05, 0.06, 0.7),
-      new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.85 })
+      new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.85 }),
+      this.rightArm,
+      [0, -0.8, 0.3],
+      false
     );
-    torch.position.set(0, -0.8, 0.3);
     torch.rotation.x = Math.PI / 4;
-    this.rightArm.add(torch);
 
-    this.torchFlame = new THREE.Mesh(
+    this.torchFlame = this.addMesh(
       new THREE.OctahedronGeometry(0.11, 0),
-      new THREE.MeshBasicMaterial({ color: 0xffb347 })
+      new THREE.MeshBasicMaterial({ color: 0xffb347 }),
+      torch,
+      [0, 0.4, 0],
+      false
     );
-    this.torchFlame.position.set(0, 0.4, 0);
-    torch.add(this.torchFlame);
 
     const { color, intensity, distance, decay } = Config.LIGHTS.playerTorch;
     this.torchLight = new THREE.PointLight(color, intensity, distance, decay);
@@ -132,7 +85,6 @@ export class Player {
     if (this.isFirstPerson === enabled) return;
     this.isFirstPerson = enabled;
 
-    // Esconde o próprio corpo mantendo a tocha visível no braço deslocado
     this.torso.material.visible = !enabled;
     this.belt.visible = !enabled;
     this.buckle.visible = !enabled;
@@ -141,11 +93,7 @@ export class Player {
     this.rightLeg.visible = !enabled;
     this.leftArm.visible = !enabled;
 
-    if (enabled) {
-      this.rightArm.position.set(0.42, 0.45, 0.35);
-    } else {
-      this.rightArm.position.set(0.55, 0.5, 0);
-    }
+    this.rightArm.position.set(...(enabled ? [0.42, 0.45, 0.35] : [0.55, 0.5, 0]));
   }
 
   checkCollision(targetPos) {
@@ -154,62 +102,44 @@ export class Player {
       new THREE.Vector3(targetPos.x - r, 0.2, targetPos.z - r),
       new THREE.Vector3(targetPos.x + r, 2.0, targetPos.z + r)
     );
-    for (const box of this.level.wallsBoxes) {
-      if (box.intersectsBox(playerBox)) return true;
-    }
-    return false;
+    return this.level.wallsBoxes.some((box) => box.intersectsBox(playerBox));
   }
 
-  update(deltaTime, cameraMode) {
-    this.setFirstPersonView(cameraMode === 2); // 2 é Primeira Pessoa no CameraManager atual
-
-    // Oscilação natural da tocha
+  updateTorch(deltaTime) {
     this.flickerTimer += deltaTime * 9;
     const flicker = Math.sin(this.flickerTimer) * 0.22 + Math.cos(this.flickerTimer * 2.7) * 0.12;
     this.torchLight.intensity = Config.LIGHTS.playerTorch.intensity + flicker;
-    const flameScale = 1 + flicker * 0.35;
-    this.torchFlame.scale.set(flameScale, flameScale * 1.3, flameScale);
+    const scale = 1 + flicker * 0.35;
+    this.torchFlame.scale.set(scale, scale * 1.3, scale);
+  }
 
-    let isMoving = false;
-    const moveVec = new THREE.Vector3(0, 0, 0);
-
-    if (cameraMode === 2) {
-      // 1ª Pessoa: Jogabilidade Tank/FPS (Mouse + A/D rotacionam, W/S andam p/ frente)
-      const turnInput = (Input.isPressed('a') || Input.isPressed('arrowleft') ? 1 : 0) -
-                        (Input.isPressed('d') || Input.isPressed('arrowright') ? 1 : 0);
-      const mouseDx = Input.consumeMouseX();
-      
+  getMoveDirection(deltaTime, isFP) {
+    if (isFP) {
+      const turnInput = getAxis('a', 'arrowleft', 'd', 'arrowright');
       const turnSpeed = Config.PLAYER.turnSpeed || 2.6;
-      this.group.rotation.y += turnInput * turnSpeed * deltaTime;
-      this.group.rotation.y -= mouseDx * Config.PLAYER.mouseSensitivity;
+      this.group.rotation.y += turnInput * turnSpeed * deltaTime - Input.consumeMouseX() * Config.PLAYER.mouseSensitivity;
 
-      const forwardInput = (Input.isPressed('w') || Input.isPressed('arrowup') ? 1 : 0) -
-                           (Input.isPressed('s') || Input.isPressed('arrowdown') ? 1 : 0);
+      const forward = getAxis('w', 'arrowup', 's', 'arrowdown');
+      if (forward === 0) return null;
 
-      if (forwardInput !== 0) {
-        const dirX = Math.sin(this.group.rotation.y);
-        const dirZ = Math.cos(this.group.rotation.y);
-        moveVec.set(dirX * forwardInput, 0, dirZ * forwardInput).normalize();
-        isMoving = true;
-      }
-    } else {
-      // 3ª Pessoa: Jogabilidade Isométrica (Movimento direcional absoluto)
-      Input.consumeMouseX(); 
-      let moveX = 0; let moveZ = 0;
-      
-      if (Input.isPressed('w') || Input.isPressed('arrowup')) moveZ -= 1;
-      if (Input.isPressed('s') || Input.isPressed('arrowdown')) moveZ += 1;
-      if (Input.isPressed('a') || Input.isPressed('arrowleft')) moveX -= 1;
-      if (Input.isPressed('d') || Input.isPressed('arrowright')) moveX += 1;
-
-      if (moveX !== 0 || moveZ !== 0) {
-        moveVec.set(moveX, 0, moveZ).normalize();
-        this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
-        isMoving = true;
-      }
+      return new THREE.Vector3(
+        Math.sin(this.group.rotation.y) * forward,
+        0,
+        Math.cos(this.group.rotation.y) * forward
+      ).normalize();
     }
 
-    // Gestão da Stamina
+    Input.consumeMouseX();
+    const moveX = getAxis('d', 'arrowright', 'a', 'arrowleft');
+    const moveZ = getAxis('s', 'arrowdown', 'w', 'arrowup');
+    if (moveX === 0 && moveZ === 0) return null;
+
+    const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize();
+    this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+    return moveVec;
+  }
+
+  updateStamina(deltaTime, isMoving) {
     const wantsSprint = Input.isPressed('shift') && isMoving;
     if (wantsSprint && !this.isExhausted && this.stamina > 0) {
       this.isSprinting = true;
@@ -225,36 +155,47 @@ export class Player {
         this.isExhausted = false;
       }
     }
+  }
 
-    const currentSpeed = this.isSprinting ? Config.PLAYER.sprintSpeed : Config.PLAYER.speed;
+  animateLimbs(deltaTime, isMoving, isFP) {
+    const armBaseX = isFP ? -0.35 : 0;
+    if (!isMoving) {
+      this.walkTimer = 0;
+      this.leftLeg.rotation.x = this.rightLeg.rotation.x = this.leftArm.rotation.x = 0;
+      this.rightArm.rotation.x = armBaseX;
+      return;
+    }
 
-    // Aplica movimento físico e animações
+    const animSpeed = this.isSprinting ? 15 : 10;
+    const swingAmp = this.isSprinting ? 0.95 : 0.7;
+    this.walkTimer += deltaTime * animSpeed;
+
+    this.leftLeg.rotation.x = Math.sin(this.walkTimer) * swingAmp;
+    this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * swingAmp;
+    this.leftArm.rotation.x = -Math.sin(this.walkTimer) * (swingAmp * 0.85);
+    this.rightArm.rotation.x = armBaseX + Math.sin(this.walkTimer) * (isFP ? 0.08 : 0.25);
+  }
+
+  update(deltaTime, cameraMode) {
+    const isFP = cameraMode === 2;
+    this.setFirstPersonView(isFP);
+    this.updateTorch(deltaTime);
+
+    const moveVec = this.getMoveDirection(deltaTime, isFP);
+    const isMoving = moveVec !== null;
+    this.updateStamina(deltaTime, isMoving);
+
     if (isMoving) {
-      moveVec.multiplyScalar(currentSpeed * deltaTime);
+      const speed = this.isSprinting ? Config.PLAYER.sprintSpeed : Config.PLAYER.speed;
+      moveVec.multiplyScalar(speed * deltaTime);
 
       const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
       if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
 
       const targetZ = this.group.position.clone().add(new THREE.Vector3(0, 0, moveVec.z));
       if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
-
-      const animSpeed = this.isSprinting ? 15 : 10;
-      const swingAmp = this.isSprinting ? 0.95 : 0.7;
-      this.walkTimer += deltaTime * animSpeed;
-      
-      this.leftLeg.rotation.x = Math.sin(this.walkTimer) * swingAmp;
-      this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * swingAmp;
-      this.leftArm.rotation.x = -Math.sin(this.walkTimer) * (swingAmp * 0.85);
-      
-      const armRotYOffset = cameraMode === 2 ? -0.35 : 0;
-      const armSwingMult = cameraMode === 2 ? 0.08 : 0.25;
-      this.rightArm.rotation.x = armRotYOffset + Math.sin(this.walkTimer) * armSwingMult;
-    } else {
-      this.walkTimer = 0;
-      this.leftLeg.rotation.x = 0;
-      this.rightLeg.rotation.x = 0;
-      this.leftArm.rotation.x = 0;
-      this.rightArm.rotation.x = cameraMode === 2 ? -0.35 : 0;
     }
+
+    this.animateLimbs(deltaTime, isMoving, isFP);
   }
 }
