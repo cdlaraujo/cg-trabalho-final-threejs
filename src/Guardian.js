@@ -3,30 +3,30 @@ import { GuardianAI } from './GuardianAI.js';
 import { Entity, loadTexture } from './Entity.js';
 
 export class Guardian extends Entity {
-  constructor(scene, levelMap, player) {
-    const { r, c } = Config.GUARDIAN.startCell;
+  constructor(scene, levelMap, player, spawn = Config.GUARDIAN.spawns[0]) {
+    const { r, c, color } = spawn;
     super(scene, levelMap, { r, c });
 
     this.player = player;
     this.ai = new GuardianAI(levelMap, r, c);
     this.animationTimer = 0;
-    this.buildModel();
+    this.buildModel(color);
   }
 
-  buildModel() {
+  buildModel(eyeColor) {
     const mat = new THREE.MeshStandardMaterial({
       map: loadTexture(Config.TEXTURES.golem),
       roughness: 0.9,
       metalness: 0.2
     });
-    const eyeMat = new THREE.MeshBasicMaterial({ color: Config.COLORS.golemEye });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
     this.torso = this.addMesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), mat, this.group, [0, 2.0, 0]);
     this.addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.1), eyeMat, this.torso, [-0.35, 0.4, 0.52]);
     this.addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.1), eyeMat, this.torso, [0.35, 0.4, 0.52]);
     this.core = this.addMesh(new THREE.OctahedronGeometry(0.28), eyeMat, this.torso, [0, 0.05, 0.55]);
 
-    this.coreLight = new THREE.PointLight(Config.COLORS.golemEye, 1.2, 9, 2);
+    this.coreLight = new THREE.PointLight(eyeColor, 1.2, 9, 2);
     this.coreLight.position.set(0, 0.05, 0.9);
     this.torso.add(this.coreLight);
 
