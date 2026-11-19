@@ -2,83 +2,198 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Crypt Guardian 3D - Entrega 03</title>
+  <title>Crypt Guardian 3D</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #050508; user-select: none; font-family: monospace; }
+    body { margin: 0; overflow: hidden; background-color: #030305; user-select: none; font-family: monospace; }
     canvas { display: block; width: 100vw; height: 100vh; }
-    
+
+    #danger-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(229, 62, 62, 0) 55%, rgba(180, 20, 20, 0.55) 100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 5;
+    }
+
     #ui-container {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #00ffcc;
-      padding: 15px;
-      border: 1px solid #00ffcc;
+      top: 14px;
+      left: 14px;
+      background: rgba(5, 7, 12, 0.78);
+      color: #e2e8f0;
+      padding: 14px 16px;
+      border: 1px solid rgba(237, 137, 54, 0.45);
       border-radius: 8px;
       pointer-events: none;
       z-index: 10;
+      min-width: 220px;
     }
-    .ui-item { margin-bottom: 8px; font-size: 14px; }
-    .ui-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; color: #fff; text-decoration: underline; }
-    .status-on { color: #00ff00; }
-    .status-off { color: #ff3333; }
+    .ui-title {
+      font-weight: bold;
+      font-size: 15px;
+      margin-bottom: 10px;
+      color: #ed8936;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .ui-item { margin-bottom: 8px; font-size: 13px; }
+    .ui-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 10px 0; }
+
+    .stamina-wrapper {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    #ui-stamina-bar {
+      width: 100%;
+      height: 100%;
+      background: #38b2ac;
+      transition: width 0.08s linear, background-color 0.2s;
+    }
+
+    .state-patrol { color: #63b3ed; }
+    .state-search { color: #f6ad55; }
+    .state-hunt   { color: #fc8181; font-weight: bold; }
+
+    .overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 3, 6, 0.88);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      text-align: center;
+    }
+    .overlay h1 { font-size: 48px; margin: 0; letter-spacing: 2px; }
+    .overlay p { color: #e2e8f0; font-size: 18px; margin: 12px 0 0; }
+    .overlay .restart-hint { color: #ed8936; font-size: 14px; margin-top: 26px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+  <div id="danger-vignette"></div>
+
   <div id="ui-container">
-    <div class="ui-title">Painel de Demonstração (Entrega 03)</div>
-    <div class="ui-item">Câmera [C] : <span id="ui-cam">Terceira Pessoa</span></div>
-    <div class="ui-item">Luz 1 [1] (Ambiente) : <span id="ui-l1" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 2 [2] (Hemisfério) : <span id="ui-l2" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 3 [3] (Direcional/Lua): <span id="ui-l3" class="status-on">ON</span></div>
-    <div class="ui-item">Luz 4 [4] (Tocha Jogador) : <span id="ui-l4" class="status-on">ON</span></div>
-    <br>
-    <div class="ui-item" style="color: #ccc;">Movimento: W, A, S, D</div>
+    <div class="ui-title">Crypt Guardian</div>
+    <div class="ui-item" style="color: #ffd700; font-weight: bold; font-size: 15px;">
+      Relíquias: <span id="ui-score">0 / 4</span>
+    </div>
+    <div class="ui-item">
+      Guardião: <span id="ui-guardian-state" class="state-patrol">Patrulhando</span>
+    </div>
+    <div class="ui-item">
+      Fôlego:
+      <div class="stamina-wrapper">
+        <div id="ui-stamina-bar"></div>
+      </div>
+    </div>
+    <hr class="ui-divider">
+    <div class="ui-item">Câmera [C]: <span id="ui-cam">Terceira Pessoa</span></div>
+    <div class="ui-item" style="color: #a0aec0; font-size: 12px;">Mover: WASD | Correr: Shift</div>
   </div>
 
-  <!-- Importa o Main.js como módulo para permitir import/export ES6 -->
+  <div id="game-over" class="overlay" style="color: #e53e3e;">
+    <h1>VOCÊ FOI CAPTURADO</h1>
+    <p>O Guardião das Sombras alcançou você.</p>
+    <p class="restart-hint">Pressione [R] para tentar novamente</p>
+  </div>
+
+  <div id="victory" class="overlay" style="color: #ffd700;">
+    <h1>CRIPTA CONQUISTADA!</h1>
+    <p>Você recuperou todas as 4 relíquias e sobreviveu à escuridão.</p>
+    <p class="restart-hint">Pressione [R] para jogar novamente</p>
+  </div>
+
   <script>
 "use strict";
-
 // ===== Config.js =====
 const Config = {
   CAMERA: {
     fov: 60,
+    firstPersonFov: 75, // Ângulo de visão maior para não dar enjoo
     near: 0.1,
     far: 1000
   },
 
   PLAYER: {
-    speed: 5.0,
-    radius: 0.55
+    startCell: { r: 7, c: 7 },
+    speed: 4.8,
+    sprintSpeed: 8.2,
+    radius: 0.52,
+    maxStamina: 100,
+    staminaDrain: 45,
+    staminaRegen: 22,
+    exhaustedThreshold: 25,
+    turnSpeed: 2.6,
+    mouseSensitivity: 0.003 // Velocidade do giro da câmera
+  },
+
+  GUARDIAN: {
+    spawns: [
+      { r: 1,  c: 7,  color: 0xff2a2a }, // Norte - Carmesim
+      { r: 13, c: 7,  color: 0xc026d3 }, // Sul   - Violeta
+      { r: 7,  c: 1,  color: 0x22c55e }, // Oeste - Esmeralda
+      { r: 7,  c: 13, color: 0x3b82f6 }  // Leste - Safira
+    ],
+    catchRadius: 1.75,
+    searchDuration: 4.5,
+    difficultyTiers: [
+      { patrolSpeed: 2.4, huntSpeed: 4.1, visionRange: 16, walkHearing: 5.5, sprintHearing: 11.0, coreIntensity: 1.2, intercept: false },
+      { patrolSpeed: 2.8, huntSpeed: 4.5, visionRange: 19, walkHearing: 6.5, sprintHearing: 13.0, coreIntensity: 1.8, intercept: false },
+      { patrolSpeed: 3.3, huntSpeed: 5.0, visionRange: 22, walkHearing: 7.5, sprintHearing: 15.0, coreIntensity: 2.5, intercept: true  },
+      { patrolSpeed: 3.8, huntSpeed: 5.5, visionRange: 26, walkHearing: 9.0, sprintHearing: 17.5, coreIntensity: 3.4, intercept: true  }
+    ]
+  },
+
+  RELICS: {
+    total: 4,
+    spawnCells: [
+      { r: 1, c: 1 }, { r: 1, c: 13 }, { r: 13, c: 1 }, { r: 13, c: 13 }
+    ]
   },
 
   LEVEL: {
     blockSize: 4,
     grid: [
-      [1, 1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 0, 1, 0, 1, 0, 1],
-      [1, 0, 0, 0, 0, 0, 1],
-      [1, 1, 1, 1, 1, 1, 1]
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ],
+    wallTorches: [
+      { r: 2, c: 7, dir: 'S' }, { r: 12, c: 7, dir: 'N' },
+      { r: 7, c: 6, dir: 'N' }, { r: 7, c: 8, dir: 'S' },
+      { r: 4, c: 4, dir: 'S' }, { r: 4, c: 10, dir: 'S' },
+      { r: 10, c: 4, dir: 'N' }, { r: 10, c: 10, dir: 'N' }
     ]
   },
 
   COLORS: {
-    background: 0x050508,
-    fog: 0x050508,
-    floor: 0x161b22,
-    wall: 0x2d3748,
-    golem: 0x4a5568,
-    golemEye: 0xe53e3e,
+    background: 0x010102,
+    fog: 0x010102,
     playerSkin: 0x718096,
     playerClothes: 0x2b6cb0,
     playerLeather: 0x2d3748,
-    buckle: 0xd69e2e
+    buckle: 0xd69e2e,
+    relic: 0x00f5d4
   },
 
   TEXTURES: {
@@ -88,366 +203,860 @@ const Config = {
     wood: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAADKElEQVR4nO3Sy5bjNBSF4f9IttNV1VxnwICH4bV4WxYwg26oS8e2dBgoyXKKB9iT/Y20FFmW/Cd+/eXn355XAPjpaQZ+f9n63sdMmQqwbW2eK/D8to35jw8z8Oll/fZpAR5KjPm3nsC+NWCaa80c8y0CiJ5Alli4GC+eARhbt73XqYxfl+uad/t8v9S/1jZmvlvq32sD/nm9nO3rx/l0OQ7n5IfHsT1/vm7Av28b8NXDfBy/2//Hx/mP62597+MjHO/+6eXyxcb1l+tFgJcv+9OHif/d6/PrBnzz+P7ZApxqAEuNteXacinBuEBAkpmlRGa2nrUEUEu0nnvL01z3lgVGrg4FMjMiIoK8XCvh+kEYrzzOB+R1nEmUGI/d5t+tnyK+tJwiOIyPZ+s9b+c51Vh7AmvPpVyWjfPfxr3fnXMp8bz1ZfylkihBctx/3dpUA5hq7C0D2vWCrec8ldaT+3vd3nW+f/YSwIQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHEHEDMAcQcQMwBxBxAzAHECnBuCawtlxpLjbUnCUBCEBG9Z0TUEq0n0HrWElON89amGv2asUCHiMjMzCQiAAgu+w0djvMJcR1HkD3HY7f5d+v3zA819kwO4+PZSonbec4tlxLAUmLtl2Xj/LdxKXfnXHt+nMvac0xlT4Lj/stc95bA3nKqkVCvF6wltr3XEtzf6/au0/2zwH+Q0z2+DN5CsAAAAABJRU5ErkJggg=='
   },
 
-  // Central de Iluminação
   LIGHTS: {
-    exposure: 1.1,
-    ambient: { color: 0x0a0e17, intensity: 0.15 },
-    hemi:    { sky: 0x1e293b, ground: 0x050508, intensity: 0.2 },
-    moon:    { color: 0x5c7cfa, intensity: 0.35, pos: [8, 16, 6] },
-    torch: {
-      color: 0xed8936,
-      intensity: 3.2,
-      distance: 14,
-      decay: 2,         // Decaimento quadrático físico
-      flicker: true     // Oscilação procedural de chama
-    }
+    exposure: 0.85,          // Reduzido para não estourar a soma das luzes
+    fogDensity: 0.05,
+    ambient: { color: 0x070a12, intensity: 0.02 }, // Quase nula
+    hemi:    { sky: 0x121a2b, ground: 0x020204, intensity: 0.03 },
+    moon:    { color: 0x3b5284, intensity: 0.08, pos: [12, 24, 10] },
+    playerTorch: { color: 0xed8936, intensity: 3.4, distance: 15, decay: 2 },
+    wallTorch: { color: 0xff7b29, intensity: 1.5, distance: 11, decay: 2 } // Mais fracas
   }
 };
 
-// ===== Input.js =====
+// ===== UI.js =====
+
+const $ = (id) => document.getElementById(id);
+
+const GUARDIAN_STATUS = {
+  HUNT:   { text: 'CAÇANDO VOCÊ!', cls: 'state-hunt' },
+  SEARCH: { text: 'Procurando...', cls: 'state-search' },
+  PATROL: { text: 'Patrulhando',   cls: 'state-patrol' }
+};
+
 const Input = {
   keys: {},
+  mouseDeltaX: 0,
+
   init() {
-    window.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
-    window.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
+    window.addEventListener('keydown', (e) => { this.keys[e.key.toLowerCase()] = true; });
+    window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
+    window.addEventListener('blur', () => { this.keys = {}; });
+    window.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement) this.mouseDeltaX += e.movementX || 0;
+    });
   },
+
   isPressed(key) {
-    return !!this.keys[key];
+    return !!this.keys[key.toLowerCase()];
+  },
+
+  consumeMouseX() {
+    const dx = this.mouseDeltaX;
+    this.mouseDeltaX = 0;
+    return dx;
   }
 };
 
+const HUD = {
+  cam: $('ui-cam'),
+  score: $('ui-score'),
+  staminaBar: $('ui-stamina-bar'),
+  guardianState: $('ui-guardian-state'),
+  vignette: $('danger-vignette'),
+  victoryScreen: $('victory'),
+  gameOverScreen: $('game-over'),
+
+  update(player, guardianState, distToGuardian) {
+    const staminaPct = (player.stamina / Config.PLAYER.maxStamina) * 100;
+    this.staminaBar.style.width = `${staminaPct}%`;
+    this.staminaBar.style.backgroundColor = player.isExhausted ? '#e53e3e' : '#38b2ac';
+
+    const status = GUARDIAN_STATUS[guardianState] || GUARDIAN_STATUS.PATROL;
+    this.guardianState.innerText = status.text;
+    this.guardianState.className = status.cls;
+
+    const dangerStart = 14;
+    if (distToGuardian < dangerStart) {
+      const intensity = Math.max(0, Math.min(1, 1 - (distToGuardian - 2) / (dangerStart - 2)));
+      this.vignette.style.opacity = intensity.toFixed(2);
+    } else {
+      this.vignette.style.opacity = '0';
+    }
+  },
+
+  setCameraMode(mode) {
+    this.cam.innerText = mode === 1 ? 'Terceira Pessoa' : 'Primeira Pessoa';
+  },
+
+  setScore(collected, total) {
+    this.score.innerText = `${collected} / ${total}`;
+  },
+
+  showVictory() {
+    this.vignette.style.opacity = '0';
+    this.victoryScreen.style.display = 'flex';
+  },
+
+  showGameOver() {
+    this.vignette.style.opacity = '0.85';
+    this.gameOverScreen.style.display = 'flex';
+  }
+};
+
+// ===== Entity.js =====
+const textureLoader = new THREE.TextureLoader();
+const textureCache = new Map();
+
+function loadTexture(path, repeatX = 1, repeatY = 1) {
+  const key = `${path}:${repeatX}:${repeatY}`;
+  if (textureCache.has(key)) return textureCache.get(key);
+
+  const tex = textureLoader.load(path);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY);
+  textureCache.set(key, tex);
+  return tex;
+}
+
+function updateTorchFlicker(light, flame, baseIntensity, timer, phase = 0, amp = 0.2) {
+  const wave = Math.sin(timer + phase) * amp + Math.cos(timer * 2.5 + phase) * (amp * 0.55);
+  light.intensity = baseIntensity + wave;
+  const scale = 1 + wave * 0.35;
+  flame.scale.set(scale, scale * 1.28, scale);
+}
+
+class Entity {
+  constructor(scene, levelMap, startCell) {
+    this.scene = scene;
+    this.level = levelMap;
+    this.group = new THREE.Group();
+    this.group.position.copy(this.level.cellToWorld(startCell.r, startCell.c));
+    this.scene.add(this.group);
+  }
+
+  addMesh(geo, mat, parent = this.group, pos = [0, 0, 0], castShadow = true) {
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(...pos);
+    mesh.castShadow = mesh.receiveShadow = castShadow;
+    parent.add(mesh);
+    return mesh;
+  }
+}
 
 // ===== CameraManager.js =====
+
 class CameraManager {
-  constructor(camera, player) {
+  constructor(camera, player, level) {
     this.camera = camera;
     this.player = player;
-    this.mode = 1; // 1: 3ª Pessoa, 2: Top-Down, 3: 1ª Pessoa
+    this.level = level;
+    this.mode = 1; // 1: Terceira Pessoa, 2: Primeira Pessoa
+    this.raycaster = new THREE.Raycaster();
+    this.occludedWalls = [];
   }
 
   toggleMode() {
-    this.mode = this.mode === 1 ? 2 : (this.mode === 2 ? 3 : 1);
+    this.mode = this.mode === 1 ? 2 : 1;
+    
+    // Troca o FOV (Campo de Visão) para evitar enjoo na 1ª pessoa
+    const targetFov = this.mode === 2 ? Config.CAMERA.firstPersonFov : Config.CAMERA.fov;
+    if (this.camera.fov !== targetFov) {
+      this.camera.fov = targetFov;
+      this.camera.updateProjectionMatrix();
+    }
+
+    this.resetWallOpacity();
     return this.mode;
+  }
+
+  resetWallOpacity() {
+    for (const wall of this.occludedWalls) {
+      if (this.level?.wallMat) wall.material = this.level.wallMat;
+    }
+    this.occludedWalls = [];
+  }
+
+  handleWallOcclusion(targetPos) {
+    this.resetWallOpacity();
+    if (!this.level?.wallMeshes || !this.level.occludedWallMat) return;
+
+    const dir = new THREE.Vector3().subVectors(targetPos, this.camera.position);
+    const dist = dir.length();
+    dir.normalize();
+
+    this.raycaster.set(this.camera.position, dir);
+    this.raycaster.far = dist;
+
+    const hits = this.raycaster.intersectObjects(this.level.wallMeshes, false);
+    for (const hit of hits) {
+      const wall = hit.object;
+      if (wall.material !== this.level.occludedWallMat) {
+        wall.material = this.level.occludedWallMat;
+        this.occludedWalls.push(wall);
+      }
+    }
   }
 
   update() {
     const pos = this.player.group.position;
-    
+
     if (this.mode === 1) {
-      this.camera.position.set(pos.x, 18, pos.z + 14);
-      this.camera.lookAt(pos);
+      // Terceira Pessoa
+      this.camera.position.set(pos.x, 14.5, pos.z + 11.5);
+      const lookTarget = new THREE.Vector3(pos.x, pos.y + 1.2, pos.z);
+      this.camera.lookAt(lookTarget);
+      this.handleWallOcclusion(lookTarget);
+      
     } else if (this.mode === 2) {
-      this.camera.position.set(pos.x, 35, pos.z + 1);
-      this.camera.lookAt(pos);
-    } else if (this.mode === 3) {
+      // Primeira Pessoa imersiva
       const rotY = this.player.group.rotation.y;
       const dirX = Math.sin(rotY);
       const dirZ = Math.cos(rotY);
-      this.camera.position.set(pos.x + dirX * 0.3, pos.y + 2.4, pos.z + dirZ * 0.3);
-      this.camera.lookAt(this.camera.position.x + dirX, this.camera.position.y, this.camera.position.z + dirZ);
+      
+      // Câmera posicionada exatamente no lugar dos olhos da malha
+      this.camera.position.set(pos.x + dirX * 0.1, pos.y + 2.35, pos.z + dirZ * 0.1);
+      this.camera.lookAt(
+        this.camera.position.x + dirX,
+        this.camera.position.y - 0.05,
+        this.camera.position.z + dirZ
+      );
     }
   }
 }
 
-
-// ===== LightManager.js =====
-
-class LightManager {
-  constructor(scene) {
-    const { ambient, hemi, moon } = Config.LIGHTS;
-
-    // Luz ambiente para preenchimento de penumbra
-    this.ambientLight = new THREE.AmbientLight(ambient.color, ambient.intensity);
-    scene.add(this.ambientLight);
-
-    // Hemisfério (gradiente teto/chão)
-    this.hemiLight = new THREE.HemisphereLight(hemi.sky, hemi.ground, hemi.intensity);
-    scene.add(this.hemiLight);
-
-    // Luz noturna direcional com projeção de sombras
-    this.moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
-    this.moonLight.position.set(...moon.pos);
-    this.moonLight.castShadow = true;
-    this.moonLight.shadow.mapSize.set(1024, 1024);
-    this.moonLight.shadow.camera.left = -20;
-    this.moonLight.shadow.camera.right = 20;
-    this.moonLight.shadow.camera.top = 20;
-    this.moonLight.shadow.camera.bottom = -20;
-    this.moonLight.shadow.camera.near = 0.5;
-    this.moonLight.shadow.camera.far = 50;
-    this.moonLight.shadow.bias = -0.0005;
-    scene.add(this.moonLight);
-    scene.add(this.moonLight.target);
-  }
-
-  toggle(lightType) {
-    if (lightType === 'ambient') this.ambientLight.visible = !this.ambientLight.visible;
-    if (lightType === 'hemi') this.hemiLight.visible = !this.hemiLight.visible;
-    if (lightType === 'moon') this.moonLight.visible = !this.moonLight.visible;
-  }
-}
-
 // ===== LevelMap.js =====
+
+const TORCH_DIRS = {
+  N: { dx: 0, dz: -1, rotX: -Math.PI / 5, rotZ: 0 },
+  S: { dx: 0, dz:  1, rotX:  Math.PI / 5, rotZ: 0 },
+  E: { dx: 1, dz:  0, rotX: 0, rotZ: -Math.PI / 5 },
+  W: { dx: -1, dz: 0, rotX: 0, rotZ:  Math.PI / 5 }
+};
 
 class LevelMap {
   constructor(scene) {
     this.scene = scene;
     this.blockSize = Config.LEVEL.blockSize;
     this.grid = Config.LEVEL.grid;
+
+    this.rows = this.grid.length;
+    this.cols = this.grid[0].length;
+    this.offsetX = -(this.cols * this.blockSize) / 2 + this.blockSize / 2;
+    this.offsetZ = -(this.rows * this.blockSize) / 2 + this.blockSize / 2;
+
     this.wallsBoxes = [];
-    this.textureLoader = new THREE.TextureLoader();
+    this.wallMeshes = [];
+    this.wallTorches = [];
+    this.flickerTimer = 0;
+
+    this.relics = [];
+    this.collectedRelics = 0;
+    this.totalRelics = Config.RELICS.total;
+    this.relicTimer = 0;
   }
 
   cellToWorld(r, c) {
-    const rows = this.grid.length;
-    const cols = this.grid[0].length;
-    const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
-    const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
-    return new THREE.Vector3(c * this.blockSize + offsetX, 0, r * this.blockSize + offsetZ);
+    return new THREE.Vector3(
+      c * this.blockSize + this.offsetX,
+      0,
+      r * this.blockSize + this.offsetZ
+    );
+  }
+
+  worldToCell(x, z) {
+    return {
+      r: Math.round((z - this.offsetZ) / this.blockSize),
+      c: Math.round((x - this.offsetX) / this.blockSize)
+    };
+  }
+
+  isWalkable(r, c) {
+    return this.grid[r]?.[c] === 0;
   }
 
   build() {
-    const rows = this.grid.length;
-    const cols = this.grid[0].length;
-    const offsetX = -(cols * this.blockSize) / 2 + this.blockSize / 2;
-    const offsetZ = -(rows * this.blockSize) / 2 + this.blockSize / 2;
-
-    const floorTexture = this.textureLoader.load(Config.TEXTURES.floor);
-    floorTexture.wrapS = THREE.RepeatWrapping;
-    floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set(cols, rows); // Dinâmico, baseado no grid
-
-    const floorGeo = new THREE.PlaneGeometry(cols * this.blockSize, rows * this.blockSize);
-    const floorMat = new THREE.MeshStandardMaterial({ 
-      map: floorTexture, roughness: 0.7, metalness: 0.1 
+    // 1. Piso
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: loadTexture(Config.TEXTURES.floor, this.cols, this.rows),
+      roughness: 0.75,
+      metalness: 0.1
     });
-    
-    const floor = new THREE.Mesh(floorGeo, floorMat);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(this.cols * this.blockSize, this.rows * this.blockSize),
+      floorMat
+    );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = 0;
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    const wallTexture = this.textureLoader.load(Config.TEXTURES.wall);
-    wallTexture.wrapS = THREE.RepeatWrapping;
-    wallTexture.wrapT = THREE.RepeatWrapping;
-    wallTexture.repeat.set(2, 2);
-
+    // 2. Paredes (apenas dois materiais compartilhados: normal e translúcido)
     const wallGeo = new THREE.BoxGeometry(this.blockSize, 4, this.blockSize);
-    const wallMat = new THREE.MeshStandardMaterial({ 
-      map: wallTexture, roughness: 0.85, metalness: 0.15 
+    this.wallMat = new THREE.MeshStandardMaterial({
+      map: loadTexture(Config.TEXTURES.wall, 2, 2),
+      roughness: 0.88,
+      metalness: 0.12
+    });
+    this.occludedWallMat = this.wallMat.clone();
+    this.occludedWallMat.transparent = true;
+    this.occludedWallMat.opacity = 0.25;
+
+    this.grid.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (cell !== 1) return;
+        const wall = new THREE.Mesh(wallGeo, this.wallMat);
+        wall.position.copy(this.cellToWorld(r, c)).setY(2);
+        wall.castShadow = wall.receiveShadow = true;
+
+        this.scene.add(wall);
+        this.wallMeshes.push(wall);
+        this.wallsBoxes.push(new THREE.Box3().setFromObject(wall));
+      });
     });
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (this.grid[r][c] === 1) {
-          const wall = new THREE.Mesh(wallGeo, wallMat);
-          wall.position.set(c * this.blockSize + offsetX, 2, r * this.blockSize + offsetZ);
-          wall.castShadow = true;
-          wall.receiveShadow = true;
-          this.scene.add(wall);
-          this.wallsBoxes.push(new THREE.Box3().setFromObject(wall));
-        }
+    // 3. Tochas e Relíquias
+    this.buildWallTorches();
+    this.buildRelics();
+  }
+
+  buildWallTorches() {
+    const handleMat = new THREE.MeshStandardMaterial({ map: loadTexture(Config.TEXTURES.wood), roughness: 0.9 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a202c, metalness: 0.7, roughness: 0.4 });
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa94d });
+
+    const halfBlock = this.blockSize / 2;
+    const { color, intensity, distance, decay } = Config.LIGHTS.wallTorch;
+
+    Config.LEVEL.wallTorches.forEach(({ r, c, dir }, index) => {
+      const offset = TORCH_DIRS[dir];
+      if (this.grid[r]?.[c] !== 1 || !offset) return;
+
+      const wallCenter = this.cellToWorld(r, c);
+      const torchGroup = new THREE.Group();
+      torchGroup.position.set(
+        wallCenter.x + offset.dx * (halfBlock + 0.15),
+        2.35,
+        wallCenter.z + offset.dz * (halfBlock + 0.15)
+      );
+
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), ironMat);
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.65), handleMat);
+      stick.position.set(offset.dx * 0.12, 0.18, offset.dz * 0.12);
+      stick.rotation.set(offset.rotX, 0, offset.rotZ);
+
+      const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), flameMat);
+      flame.position.y = 0.38;
+      stick.add(flame);
+
+      const light = new THREE.PointLight(color, intensity, distance, decay);
+      light.position.set(offset.dx * 0.45, 0.55, offset.dz * 0.45);
+
+      torchGroup.add(bracket, stick, light);
+      this.scene.add(torchGroup);
+      this.wallTorches.push({ light, flame, baseIntensity: intensity, phase: index * 1.7 });
+    });
+  }
+
+  buildRelics() {
+    const geo = new THREE.OctahedronGeometry(0.45, 0);
+    const mat = new THREE.MeshStandardMaterial({
+      color: Config.COLORS.relic,
+      emissive: Config.COLORS.relic,
+      emissiveIntensity: 0.7,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+
+    Config.RELICS.spawnCells.slice(0, this.totalRelics).forEach(({ r, c }) => {
+      if (!this.isWalkable(r, c)) return;
+
+      const worldPos = this.cellToWorld(r, c);
+      const group = new THREE.Group();
+      group.position.set(worldPos.x, 1.35, worldPos.z);
+
+      const crystal = new THREE.Mesh(geo, mat);
+      crystal.castShadow = true;
+      const glow = new THREE.PointLight(Config.COLORS.relic, 1.1, 7, 2);
+
+      group.add(crystal, glow);
+      this.scene.add(group);
+      this.relics.push({ group, crystal, active: true });
+    });
+  }
+
+  update(deltaTime, playerPos = null) {
+    // Oscilação das tochas
+    this.flickerTimer += deltaTime * 7.5;
+    for (const torch of this.wallTorches) {
+      updateTorchFlicker(torch.light, torch.flame, torch.baseIntensity, this.flickerTimer, torch.phase, 0.18);
+    }
+
+    // Flutuação e coleta das relíquias
+    if (!playerPos) return false;
+    this.relicTimer += deltaTime * 3;
+    let justCollected = false;
+
+    for (const item of this.relics) {
+      if (!item.active) continue;
+
+      item.crystal.rotation.y += deltaTime * 2.2;
+      item.group.position.y = 1.35 + Math.sin(this.relicTimer) * 0.18;
+
+      if (Math.hypot(item.group.position.x - playerPos.x, item.group.position.z - playerPos.z) < 1.5) {
+        item.active = false;
+        this.scene.remove(item.group);
+        this.collectedRelics++;
+        justCollected = true;
       }
     }
+
+    return justCollected;
   }
 }
 
 // ===== Player.js =====
 
-const addMesh = (geo, mat, parent, [x, y, z], [rx, ry, rz] = [0, 0, 0]) => {
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, y, z);
-  m.rotation.set(rx, ry, rz);
-  m.castShadow = true;
-  parent.add(m);
-  return m;
-};
+const isPressed = (a, b) => Input.isPressed(a) || Input.isPressed(b);
+const getAxis = (posA, posB, negA, negB) =>
+  (isPressed(posA, posB) ? 1 : 0) - (isPressed(negA, negB) ? 1 : 0);
 
-class Player {
+class Player extends Entity {
   constructor(scene, levelMap) {
-    this.level = levelMap;
-    this.group = new THREE.Group();
-    this.group.position.copy(this.level.cellToWorld(3, 3));
-    scene.add(this.group);
+    super(scene, levelMap, Config.PLAYER.startCell);
+    this.group.rotation.y = Math.PI; // Inicia olhando para o Norte
+
     this.walkTimer = 0;
+    this.flickerTimer = 0;
+    this.stamina = Config.PLAYER.maxStamina;
+    this.isExhausted = false;
+    this.isSprinting = false;
+    this.isMoving = false;
+    this.isFirstPerson = false;
+
     this.buildModel();
   }
 
   buildModel() {
-    const { playerSkin: cS, playerClothes: cC, playerLeather: cL, buckle: cB } = Config.COLORS;
-    const mat = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
-    const mEye = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerSkin, roughness: 0.7 });
+    const clothesMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerClothes, roughness: 0.8 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.playerLeather, roughness: 0.9 });
+    const buckleMat = new THREE.MeshStandardMaterial({ color: Config.COLORS.buckle, metalness: 0.6, roughness: 0.4 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f0f15 });
 
-    // Tronco e Acessórios
-    this.torso = addMesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), mat(cC, 0.8), this.group, [0, 1.4, 0]);
-    addMesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), mat(cL, 0.9), this.torso, [0, -0.45, 0]);
-    addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.05), mat(cB, 0.4), this.torso, [0, -0.45, 0.29]);
+    // Torso usa material clonado para ficar invisível na 1ª pessoa sem ocultar braços/pernas
+    this.torso = this.addMesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat.clone(), this.group, [0, 1.4, 0]);
+    this.belt = this.addMesh(new THREE.BoxGeometry(0.85, 0.12, 0.55), leatherMat, this.torso, [0, -0.45, 0]);
+    this.buckle = this.addMesh(new THREE.BoxGeometry(0.15, 0.1, 0.05), buckleMat, this.torso, [0, -0.45, 0.29]);
+    this.head = this.addMesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat, this.torso, [0, 1.0, 0]);
 
-    // Cabeça
-    const head = addMesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), mat(cS, 0.7), this.torso, [0, 1.0, 0]);
-    addMesh(new THREE.BoxGeometry(0.1, 0.08, 0.02), mEye, head, [-0.12, 0.1, 0.26]);
-    addMesh(new THREE.BoxGeometry(0.1, 0.08, 0.02), mEye, head, [0.12, 0.1, 0.26]);
+    const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.02);
+    this.addMesh(eyeGeo, eyeMat, this.head, [-0.12, 0.1, 0.26], false);
+    this.addMesh(eyeGeo, eyeMat, this.head, [0.12, 0.1, 0.26], false);
 
-    // Membros Articulados
     const legGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3).translate(0, -0.45, 0);
+    this.leftLeg = this.addMesh(legGeo, clothesMat, this.torso, [-0.25, -0.6, 0]);
+    this.rightLeg = this.addMesh(legGeo, clothesMat, this.torso, [0.25, -0.6, 0]);
+
     const armGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25).translate(0, -0.4, 0);
+    this.leftArm = this.addMesh(armGeo, clothesMat, this.torso, [-0.55, 0.5, 0]);
+    this.rightArm = this.addMesh(armGeo, clothesMat, this.torso, [0.55, 0.5, 0]);
+
     const handGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+    this.addMesh(handGeo, skinMat, this.leftArm, [0, -0.85, 0]);
+    this.addMesh(handGeo, skinMat, this.rightArm, [0, -0.85, 0]);
 
-    this.leftLeg = addMesh(legGeo, mat(cC, 0.8), this.torso, [-0.25, -0.6, 0]);
-    this.rightLeg = addMesh(legGeo, mat(cC, 0.8), this.torso, [0.25, -0.6, 0]);
-    this.leftArm = addMesh(armGeo, mat(cC, 0.8), this.torso, [-0.55, 0.5, 0]);
-    this.rightArm = addMesh(armGeo, mat(cC, 0.8), this.torso, [0.55, 0.5, 0]);
-    addMesh(handGeo, mat(cS, 0.7), this.leftArm, [0, -0.85, 0]);
-    addMesh(handGeo, mat(cS, 0.7), this.rightArm, [0, -0.85, 0]);
-
-    // Tocha Texturizada e Fonte de Luz
-    const tex = new THREE.TextureLoader().load(Config.TEXTURES.wood);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, 2);
-
-    const torch = addMesh(
+    // Tocha na mão direita
+    const torch = this.addMesh(
       new THREE.CylinderGeometry(0.05, 0.06, 0.7),
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ map: loadTexture(Config.TEXTURES.wood, 1, 2), roughness: 0.85 }),
       this.rightArm,
       [0, -0.8, 0.3],
-      [Math.PI / 4, 0, 0]
+      false
+    );
+    torch.rotation.x = Math.PI / 4;
+
+    this.torchFlame = this.addMesh(
+      new THREE.OctahedronGeometry(0.11, 0),
+      new THREE.MeshBasicMaterial({ color: 0xffb347 }),
+      torch,
+      [0, 0.4, 0],
+      false
     );
 
-    const t = Config.LIGHTS.torch;
-    this.torchLight = new THREE.PointLight(t.color, t.intensity, t.distance, t.decay);
+    const { color, intensity, distance, decay } = Config.LIGHTS.playerTorch;
+    this.torchLight = new THREE.PointLight(color, intensity, distance, decay);
     this.torchLight.position.set(0, 0.45, 0);
     this.torchLight.castShadow = true;
+    this.torchLight.shadow.mapSize.set(512, 512);
     this.torchLight.shadow.bias = -0.0005;
     torch.add(this.torchLight);
   }
 
-  checkCol(pos) {
-    const box = new THREE.Box3().setFromCenterAndSize(pos.clone().setY(1), new THREE.Vector3(1.1, 1.8, 1.1));
-    return this.level.wallsBoxes.some(w => w.intersectsBox(box));
+  setFirstPersonView(enabled) {
+    if (this.isFirstPerson === enabled) return;
+    this.isFirstPerson = enabled;
+
+    this.torso.material.visible = !enabled;
+    this.belt.visible = !enabled;
+    this.buckle.visible = !enabled;
+    this.head.visible = !enabled;
+    this.leftLeg.visible = !enabled;
+    this.rightLeg.visible = !enabled;
+    this.leftArm.visible = !enabled;
+
+    this.rightArm.position.set(...(enabled ? [0.42, 0.45, 0.35] : [0.55, 0.5, 0]));
   }
 
-  update(deltaTime) {
-    const mx = Input.isPressed('d') - Input.isPressed('a');
-    const mz = Input.isPressed('s') - Input.isPressed('w');
+  checkCollision(targetPos) {
+    const r = Config.PLAYER.radius;
+    const playerBox = new THREE.Box3(
+      new THREE.Vector3(targetPos.x - r, 0.2, targetPos.z - r),
+      new THREE.Vector3(targetPos.x + r, 2.0, targetPos.z + r)
+    );
+    return this.level.wallsBoxes.some((box) => box.intersectsBox(playerBox));
+  }
 
-    if (mx !== 0 || mz !== 0) {
-      const vec = new THREE.Vector3(mx, 0, mz).normalize().multiplyScalar(Config.PLAYER.speed * deltaTime);
-      const pos = this.group.position;
+  updateTorch(deltaTime) {
+    this.flickerTimer += deltaTime * 9;
+    updateTorchFlicker(this.torchLight, this.torchFlame, Config.LIGHTS.playerTorch.intensity, this.flickerTimer, 0, 0.22);
+  }
 
-      if (!this.checkCol(pos.clone().add(new THREE.Vector3(vec.x, 0, 0)))) pos.x += vec.x;
-      if (!this.checkCol(pos.clone().add(new THREE.Vector3(0, 0, vec.z)))) pos.z += vec.z;
+  getMoveDirection(deltaTime, isFP) {
+    if (isFP) {
+      const turnInput = getAxis('a', 'arrowleft', 'd', 'arrowright');
+      this.group.rotation.y += turnInput * Config.PLAYER.turnSpeed * deltaTime - Input.consumeMouseX() * Config.PLAYER.mouseSensitivity;
 
-      this.group.rotation.y = Math.atan2(vec.x, vec.z);
-      this.walkTimer += deltaTime * 10;
+      const forward = getAxis('w', 'arrowup', 's', 'arrowdown');
+      if (forward === 0) return null;
+
+      return new THREE.Vector3(
+        Math.sin(this.group.rotation.y) * forward,
+        0,
+        Math.cos(this.group.rotation.y) * forward
+      ).normalize();
+    }
+
+    Input.consumeMouseX();
+    const moveX = getAxis('d', 'arrowright', 'a', 'arrowleft');
+    const moveZ = getAxis('s', 'arrowdown', 'w', 'arrowup');
+    if (moveX === 0 && moveZ === 0) return null;
+
+    const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize();
+    this.group.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+    return moveVec;
+  }
+
+  updateStamina(deltaTime, isMoving) {
+    const wantsSprint = Input.isPressed('shift') && isMoving;
+    if (wantsSprint && !this.isExhausted && this.stamina > 0) {
+      this.isSprinting = true;
+      this.stamina = Math.max(0, this.stamina - Config.PLAYER.staminaDrain * deltaTime);
+      if (this.stamina === 0) {
+        this.isExhausted = true;
+        this.isSprinting = false;
+      }
     } else {
+      this.isSprinting = false;
+      this.stamina = Math.min(Config.PLAYER.maxStamina, this.stamina + Config.PLAYER.staminaRegen * deltaTime);
+      if (this.isExhausted && this.stamina >= Config.PLAYER.exhaustedThreshold) {
+        this.isExhausted = false;
+      }
+    }
+  }
+
+  animateLimbs(deltaTime, isMoving, isFP) {
+    const armBaseX = isFP ? -0.35 : 0;
+    if (!isMoving) {
       this.walkTimer = 0;
+      this.leftLeg.rotation.x = this.rightLeg.rotation.x = this.leftArm.rotation.x = 0;
+      this.rightArm.rotation.x = armBaseX;
+      return;
     }
 
-    const w = this.walkTimer;
-    this.leftLeg.rotation.x = Math.sin(w) * 0.7;
-    this.rightLeg.rotation.x = -Math.sin(w) * 0.7;
-    this.leftArm.rotation.x = -Math.sin(w) * 0.6;
-    this.rightArm.rotation.x = Math.sin(w) * 0.3;
+    const animSpeed = this.isSprinting ? 15 : 10;
+    const swingAmp = this.isSprinting ? 0.95 : 0.7;
+    this.walkTimer += deltaTime * animSpeed;
 
-    // Oscilação física da tocha (flicker)
-    if (Config.LIGHTS.torch.flicker && this.torchLight.visible) {
-      this.torchLight.intensity = Config.LIGHTS.torch.intensity +
-        Math.sin(Date.now() * 0.015) * 0.35 +
-        Math.cos(Date.now() * 0.03) * 0.15;
+    this.leftLeg.rotation.x = Math.sin(this.walkTimer) * swingAmp;
+    this.rightLeg.rotation.x = -Math.sin(this.walkTimer) * swingAmp;
+    this.leftArm.rotation.x = -Math.sin(this.walkTimer) * (swingAmp * 0.85);
+    this.rightArm.rotation.x = armBaseX + Math.sin(this.walkTimer) * (isFP ? 0.08 : 0.25);
+  }
+
+  update(deltaTime, cameraMode) {
+    const isFP = cameraMode === 2;
+    this.setFirstPersonView(isFP);
+    this.updateTorch(deltaTime);
+
+    const moveVec = this.getMoveDirection(deltaTime, isFP);
+    const isMoving = moveVec !== null;
+    this.isMoving = isMoving;
+    this.updateStamina(deltaTime, isMoving);
+
+    if (isMoving) {
+      const speed = this.isSprinting ? Config.PLAYER.sprintSpeed : Config.PLAYER.speed;
+      moveVec.multiplyScalar(speed * deltaTime);
+
+      const targetX = this.group.position.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
+      if (!this.checkCollision(targetX)) this.group.position.x = targetX.x;
+
+      const targetZ = this.group.position.clone().add(new THREE.Vector3(0, 0, moveVec.z));
+      if (!this.checkCollision(targetZ)) this.group.position.z = targetZ.z;
     }
+
+    this.animateLimbs(deltaTime, isMoving, isFP);
+  }
+}
+
+// ===== GuardianAI.js =====
+
+const DIRS = [
+  [-1, 0], // Norte
+  [1, 0],  // Sul
+  [0, -1], // Oeste
+  [0, 1]   // Leste
+];
+
+class GuardianAI {
+  constructor(levelMap, startRow, startCol) {
+    this.level = levelMap;
+    this.gridPos = { r: startRow, c: startCol };
+    this.prevGridPos = { r: startRow, c: startCol };
+    this.targetPos = this.level.cellToWorld(startRow, startCol);
+
+    this.state = 'PATROL'; // 'PATROL' | 'HUNT' | 'SEARCH'
+    this.lastKnownCell = null;
+    this.searchTimer = 0;
+    this.isDirectPursuit = false;
+    this.tier = Config.GUARDIAN.difficultyTiers[0];
+  }
+
+  setDifficulty(relicsCollected) {
+    const tiers = Config.GUARDIAN.difficultyTiers;
+    this.tier = tiers[Math.min(relicsCollected, tiers.length - 1)];
+  }
+
+  hasLineOfSight(fromPos, toPos) {
+    const dist = fromPos.distanceTo(toPos);
+    if (dist > this.tier.visionRange) return false;
+
+    const steps = Math.ceil(dist / 0.5);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const sampleX = fromPos.x + (toPos.x - fromPos.x) * t;
+      const sampleZ = fromPos.z + (toPos.z - fromPos.z) * t;
+      const cell = this.level.worldToCell(sampleX, sampleZ);
+      if (!this.level.isWalkable(cell.r, cell.c)) return false;
+    }
+    return true;
+  }
+
+  // Encontra o próximo passo ótimo pelo labirinto usando Busca em Largura (BFS)
+  findNextStepBFS(startCell, goalCell) {
+    if (!goalCell || (startCell.r === goalCell.r && startCell.c === goalCell.c)) return null;
+
+    const queue = [{ r: startCell.r, c: startCell.c, firstStep: null }];
+    const visited = new Set([`${startCell.r},${startCell.c}`]);
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+
+      for (const [dr, dc] of DIRS) {
+        const nr = curr.r + dr;
+        const nc = curr.c + dc;
+        const key = `${nr},${nc}`;
+
+        if (!visited.has(key) && this.level.isWalkable(nr, nc)) {
+          visited.add(key);
+          const step = curr.firstStep || { r: nr, c: nc };
+          if (nr === goalCell.r && nc === goalCell.c) return step;
+          queue.push({ r: nr, c: nc, firstStep: step });
+        }
+      }
+    }
+    return null;
+  }
+
+  getInterceptCell(player) {
+    const baseCell = this.level.worldToCell(player.group.position.x, player.group.position.z);
+    if (!this.tier.intercept || !player.isMoving) return baseCell;
+
+    const rotY = player.group.rotation.y;
+    const stepR = Math.round(Math.cos(rotY));
+    const stepC = Math.round(Math.sin(rotY));
+
+    for (let ahead = 2; ahead >= 1; ahead--) {
+      const predR = baseCell.r + stepR * ahead;
+      const predC = baseCell.c + stepC * ahead;
+      if (this.level.isWalkable(predR, predC)) return { r: predR, c: predC };
+    }
+    return baseCell;
+  }
+
+  choosePatrolStep() {
+    const candidates = DIRS
+      .map(([dr, dc]) => ({ r: this.gridPos.r + dr, c: this.gridPos.c + dc }))
+      .filter((n) => this.level.isWalkable(n.r, n.c));
+
+    if (candidates.length === 0) return null;
+
+    const filtered = candidates.length > 1
+      ? candidates.filter((n) => !(n.r === this.prevGridPos.r && n.c === this.prevGridPos.c))
+      : candidates;
+
+    return filtered[Math.floor(Math.random() * filtered.length)];
+  }
+
+  updatePerception(currentPos, player, deltaTime) {
+    const playerPos = player.group.position;
+    const dist = currentPos.distanceTo(playerPos);
+    const hearingRadius = player.isSprinting ? this.tier.sprintHearing : this.tier.walkHearing;
+
+    if (dist <= hearingRadius || this.hasLineOfSight(currentPos, playerPos)) {
+      this.state = 'HUNT';
+      this.lastKnownCell = this.level.worldToCell(playerPos.x, playerPos.z);
+      this.searchTimer = Config.GUARDIAN.searchDuration;
+    } else if (this.state === 'HUNT') {
+      this.state = 'SEARCH';
+    } else if (this.state === 'SEARCH') {
+      this.searchTimer -= deltaTime;
+      if (this.searchTimer <= 0) {
+        this.state = 'PATROL';
+        this.lastKnownCell = null;
+      }
+    }
+  }
+
+  calculateNextMove(currentPos, player, deltaTime) {
+    this.updatePerception(currentPos, player, deltaTime);
+
+    const speed = this.state === 'PATROL' ? this.tier.patrolSpeed : this.tier.huntSpeed;
+    const currentCell = this.level.worldToCell(currentPos.x, currentPos.z);
+    const playerCell = this.level.worldToCell(player.group.position.x, player.group.position.z);
+
+    // Perseguição direta quando ambos estão na mesma célula (avança até capturar)
+    if (this.state === 'HUNT' && currentCell.r === playerCell.r && currentCell.c === playerCell.c) {
+      this.isDirectPursuit = true;
+      this.gridPos = currentCell;
+      this.targetPos = player.group.position.clone();
+      this.targetPos.y = currentPos.y;
+
+      const vector = new THREE.Vector3().subVectors(this.targetPos, currentPos);
+      if (vector.lengthSq() > 0.0001) vector.normalize();
+      return { vector, lookAt: this.targetPos, speed };
+    }
+
+    let lookAt = null;
+    const reachedWaypoint = currentPos.distanceTo(this.targetPos) < 0.08;
+
+    if (reachedWaypoint || this.isDirectPursuit) {
+      if (reachedWaypoint) currentPos.copy(this.targetPos);
+      this.isDirectPursuit = false;
+      this.gridPos = currentCell;
+
+      let nextCell = null;
+
+      if (this.state === 'HUNT') {
+        const goalCell = this.getInterceptCell(player);
+        nextCell = this.findNextStepBFS(this.gridPos, goalCell) ||
+                   this.findNextStepBFS(this.gridPos, playerCell) ||
+                   this.findNextStepBFS(this.gridPos, this.lastKnownCell);
+      } else if (this.state === 'SEARCH' && this.lastKnownCell) {
+        nextCell = this.findNextStepBFS(this.gridPos, this.lastKnownCell);
+        if (!nextCell) {
+          this.state = 'PATROL';
+          this.lastKnownCell = null;
+        }
+      }
+
+      if (!nextCell) nextCell = this.choosePatrolStep();
+      if (!nextCell) return { vector: null, lookAt: null, speed };
+
+      this.prevGridPos = { ...this.gridPos };
+      this.gridPos = nextCell;
+      this.targetPos = this.level.cellToWorld(nextCell.r, nextCell.c);
+      lookAt = this.targetPos;
+    }
+
+    const vector = new THREE.Vector3().subVectors(this.targetPos, currentPos).normalize();
+    return { vector, lookAt, speed };
   }
 }
 
 // ===== Guardian.js =====
-class Guardian {
-  constructor(scene, initialPosition = new THREE.Vector3(0, 0, -4)) {
-    this.scene = scene;
-    this.group = new THREE.Group();
-    this.group.position.copy(initialPosition);
-    this.scene.add(this.group);
+
+class Guardian extends Entity {
+  constructor(scene, levelMap, player, spawn = Config.GUARDIAN.spawns[0]) {
+    const { r, c, color } = spawn;
+    super(scene, levelMap, { r, c });
+
+    this.player = player;
+    this.ai = new GuardianAI(levelMap, r, c);
     this.animationTimer = 0;
-    this.textureLoader = new THREE.TextureLoader();
-    this.buildModel();
+    this.buildModel(color);
   }
 
-  buildModel() {
-    // 3. Textura Rochosa do Golem
-    const golemTexture = this.textureLoader.load('data:image/png;base64,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');
-    golemTexture.wrapS = THREE.RepeatWrapping;
-    golemTexture.wrapT = THREE.RepeatWrapping;
-    golemTexture.repeat.set(1, 1);
-
-    const golemMat = new THREE.MeshStandardMaterial({ 
-      map: golemTexture,
-      roughness: 0.9, 
-      metalness: 0.2 
+  buildModel(eyeColor) {
+    const mat = new THREE.MeshStandardMaterial({
+      map: loadTexture(Config.TEXTURES.golem),
+      roughness: 0.9,
+      metalness: 0.2
     });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
-    this.torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), golemMat);
-    this.torso.position.y = 2.0;
-    this.torso.castShadow = true;
-    this.torso.receiveShadow = true;
-    this.group.add(this.torso);
+    this.torso = this.addMesh(new THREE.BoxGeometry(1.6, 1.8, 1.0), mat, this.group, [0, 2.0, 0]);
+    this.addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.1), eyeMat, this.torso, [-0.35, 0.4, 0.52]);
+    this.addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.1), eyeMat, this.torso, [0.35, 0.4, 0.52]);
+    this.core = this.addMesh(new THREE.OctahedronGeometry(0.28), eyeMat, this.torso, [0, 0.05, 0.55]);
 
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xe53e3e });
-    const eyeLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
-    eyeLeft.position.set(-0.35, 0.4, 0.52);
-    this.torso.add(eyeLeft);
+    this.coreLight = new THREE.PointLight(eyeColor, 1.2, 9, 2);
+    this.coreLight.position.set(0, 0.05, 0.9);
+    this.torso.add(this.coreLight);
 
-    const eyeRight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
-    eyeRight.position.set(0.35, 0.4, 0.52);
-    this.torso.add(eyeRight);
+    const armGeo = new THREE.BoxGeometry(0.5, 1.4, 0.5).translate(0, -0.7, 0);
+    const legGeo = new THREE.BoxGeometry(0.6, 1.0, 0.7).translate(0, -0.5, 0);
 
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.25), new THREE.MeshBasicMaterial({ color: 0xe53e3e }));
-    core.position.set(0, 0.05, 0.55);
-    this.torso.add(core);
-    this.core = core;
+    this.leftArm = this.addMesh(armGeo, mat, this.torso, [-1.1, 0.6, 0]);
+    this.rightArm = this.addMesh(armGeo, mat, this.torso, [1.1, 0.6, 0]);
+    this.addMesh(legGeo, mat, this.torso, [-0.5, -0.9, 0]);
+    this.addMesh(legGeo, mat, this.torso, [0.5, -0.9, 0]);
+  }
 
-    const armGeo = new THREE.BoxGeometry(0.5, 1.4, 0.5);
-    armGeo.translate(0, -0.7, 0);
+  onRelicCollected(collectedCount) {
+    this.ai.setDifficulty(collectedCount);
+  }
 
-    this.leftArm = new THREE.Mesh(armGeo, golemMat);
-    this.leftArm.position.set(-1.1, 0.6, 0);
-    this.leftArm.castShadow = true;
-    this.torso.add(this.leftArm);
-
-    this.rightArm = new THREE.Mesh(armGeo, golemMat);
-    this.rightArm.position.set(1.1, 0.6, 0);
-    this.rightArm.castShadow = true;
-    this.torso.add(this.rightArm);
-
-    const legGeo = new THREE.BoxGeometry(0.6, 1.0, 0.7);
-    legGeo.translate(0, -0.5, 0);
-
-    this.leftLeg = new THREE.Mesh(legGeo, golemMat);
-    this.leftLeg.position.set(-0.5, -0.9, 0);
-    this.leftLeg.castShadow = true;
-    this.torso.add(this.leftLeg);
-
-    this.rightLeg = new THREE.Mesh(legGeo, golemMat);
-    this.rightLeg.position.set(0.5, -0.9, 0);
-    this.rightLeg.castShadow = true;
-    this.torso.add(this.rightLeg);
+  getState() {
+    return this.ai.state;
   }
 
   update(deltaTime) {
-    this.animationTimer += deltaTime * 2.5;
-    this.torso.position.y = 2.0 + Math.sin(this.animationTimer * 1.2) * 0.15;
-    this.leftArm.rotation.x = Math.sin(this.animationTimer) * 0.4;
-    this.rightArm.rotation.x = -Math.sin(this.animationTimer) * 0.4;
-    if (this.core) this.core.rotation.y += deltaTime * 1.5;
+    const decision = this.ai.calculateNextMove(this.group.position, this.player, deltaTime);
+
+    this.animationTimer += deltaTime * (decision.speed * 0.95);
+    const t = this.animationTimer;
+
+    this.torso.position.y = 2.0 + Math.sin(t * 1.2) * 0.15;
+    this.leftArm.rotation.x = Math.sin(t) * 0.45;
+    this.rightArm.rotation.x = -Math.sin(t) * 0.45;
+    this.core.rotation.y += deltaTime * (this.ai.state === 'HUNT' ? 5.0 : 1.8);
+
+    const huntBoost = this.ai.state === 'HUNT' ? 1.0 : 0.0;
+    this.coreLight.intensity = this.ai.tier.coreIntensity + huntBoost + Math.sin(t * 2.5) * 0.35;
+
+    if (decision.lookAt) {
+      this.group.lookAt(decision.lookAt);
+    }
+    if (decision.vector) {
+      this.group.position.add(decision.vector.multiplyScalar(decision.speed * deltaTime));
+    }
   }
 }
 
-
 // ===== Main.js =====
 
-// Setup de Entrada e Cena
 Input.init();
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(Config.COLORS.background);
-scene.fog = new THREE.FogExp2(Config.COLORS.fog, 0.03);
+scene.fog = new THREE.FogExp2(Config.COLORS.fog, Config.LIGHTS.fogDensity);
+
+// Iluminação global (substitui LightManager.js)
+const { ambient, hemi, moon } = Config.LIGHTS;
+scene.add(new THREE.AmbientLight(ambient.color, ambient.intensity));
+scene.add(new THREE.HemisphereLight(hemi.sky, hemi.ground, hemi.intensity));
+const moonLight = new THREE.DirectionalLight(moon.color, moon.intensity);
+moonLight.position.set(...moon.pos);
+scene.add(moonLight);
 
 const camera = new THREE.PerspectiveCamera(
   Config.CAMERA.fov,
@@ -462,11 +1071,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
-
-// Mapeamento de tom cinematográfico para controle de brilho e contraste
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = Config.LIGHTS.exposure;
-
+if (Config.LIGHTS?.exposure) renderer.toneMappingExposure = Config.LIGHTS.exposure;
 document.body.appendChild(renderer.domElement);
 
 window.addEventListener('resize', () => {
@@ -475,56 +1080,103 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Instanciação dos Sistemas
-const lightManager = new LightManager(scene);
 const level = new LevelMap(scene);
 level.build();
 
 const player = new Player(scene, level);
-const guardian = new Guardian(scene, new THREE.Vector3(0, 0, -4));
-const cameraManager = new CameraManager(camera, player);
+const cameraManager = new CameraManager(camera, player, level);
 
-// HUD / Toggles de Demonstração
-function updateUI() {
-  const modes = { 1: "Terceira Pessoa", 2: "Top-Down (Tática)", 3: "Primeira Pessoa" };
-  document.getElementById('ui-cam').innerText = modes[cameraManager.mode];
-
-  const updateLuz = (id, lightObj) => {
-    const el = document.getElementById(id);
-    el.innerText = lightObj.visible ? "ON" : "OFF";
-    el.className = lightObj.visible ? "status-on" : "status-off";
-  };
-  updateLuz('ui-l1', lightManager.ambientLight);
-  updateLuz('ui-l2', lightManager.hemiLight);
-  updateLuz('ui-l3', lightManager.moonLight);
-  updateLuz('ui-l4', player.torchLight);
+const guardians = [];
+function setGuardianCount(count) {
+  while (guardians.length > count) {
+    const removed = guardians.pop();
+    scene.remove(removed.group);
+  }
+  while (guardians.length < count) {
+    const spawn = Config.GUARDIAN.spawns[guardians.length];
+    const g = new Guardian(scene, level, player, spawn);
+    g.onRelicCollected(level.collectedRelics);
+    guardians.push(g);
+  }
 }
+setGuardianCount(1);
+
+let isGameOver = false;
+const releasePointer = () => {
+  if (document.pointerLockElement) document.exitPointerLock?.();
+};
+
+renderer.domElement.addEventListener('click', () => {
+  if (!isGameOver && cameraManager.mode === 2 && document.pointerLockElement !== renderer.domElement) {
+    renderer.domElement.requestPointerLock?.();
+  }
+});
 
 window.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
-  if (key === 'c') cameraManager.toggleMode();
-  if (key === '1') lightManager.toggle('ambient');
-  if (key === '2') lightManager.toggle('hemi');
-  if (key === '3') lightManager.toggle('moon');
-  if (key === '4') player.torchLight.visible = !player.torchLight.visible;
-  updateUI();
+
+  if (isGameOver) {
+    if (key === 'r') location.reload();
+    return;
+  }
+
+  if (key === 'c') {
+    const mode = cameraManager.toggleMode();
+    HUD.setCameraMode(mode);
+    if (mode === 1) releasePointer();
+  } else if (['1', '2', '3', '4'].includes(key)) {
+    setGuardianCount(Number(key));
+  }
 });
 
-// Game Loop
 const clock = new THREE.Clock();
+
 function animate() {
   requestAnimationFrame(animate);
   const deltaTime = Math.min(clock.getDelta(), 0.1);
 
-  player.update(deltaTime);
-  guardian.update(deltaTime);
-  cameraManager.update();
+  const relicCollected = level.update(deltaTime, isGameOver ? null : player.group.position);
 
+  if (!isGameOver) {
+    player.update(deltaTime, cameraManager.mode);
+
+    let minDist = Infinity;
+    let topState = 'PATROL';
+    for (const g of guardians) {
+      g.update(deltaTime);
+      const dist = g.group.position.distanceTo(player.group.position);
+      if (dist < minDist) minDist = dist;
+
+      const state = g.getState();
+      if (state === 'HUNT') topState = 'HUNT';
+      else if (state === 'SEARCH' && topState !== 'HUNT') topState = 'SEARCH';
+    }
+
+    HUD.update(player, topState, minDist);
+
+    if (relicCollected) {
+      HUD.setScore(level.collectedRelics, level.totalRelics);
+      for (const g of guardians) g.onRelicCollected(level.collectedRelics);
+
+      if (level.collectedRelics >= level.totalRelics) {
+        isGameOver = true;
+        releasePointer();
+        HUD.showVictory();
+      }
+    }
+
+    if (!isGameOver && minDist < Config.GUARDIAN.catchRadius) {
+      isGameOver = true;
+      releasePointer();
+      HUD.showGameOver();
+    }
+  }
+
+  cameraManager.update();
   renderer.render(scene, camera);
 }
 
 animate();
-
 </script>
 </body>
 </html>
